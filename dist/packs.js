@@ -205,6 +205,7 @@ export function bindPack(id, root, ctx) {
   on('input',e=>{if(id==='order'&&e.target.matches('input[type="number"]'))updateOrder();if(id==='demand'&&e.target.matches('input[type="number"]'))updateDemand();if(id==='experience'&&e.target.name==='brandSentence')checkQuality();if(id==='care'&&e.target.name==='question')updateCare();});
   on('change',e=>{if(id==='order'&&e.target.name==='tolerance')updateOrder();if(id==='care'&&['careLot','careLanguage'].includes(e.target.name))updateCare(true);});
   on('click',e=>{
+    const citation=e.target.closest('a.pk-citation');if(citation){e.preventDefault();const details=$('.pk-source-doc');if(details)details.open=true;const line=$(citation.getAttribute('href'));line?.scrollIntoView({behavior:'smooth',block:'center'});return;}
     const b=e.target.closest('button');if(!b)return;
     if(b.dataset.navigate)ctx.navigate(b.dataset.navigate);
     if(b.hasAttribute('data-order-reset')){for(const [key,n]of Object.entries({invoiceQty:12,invoicePrice:180,receivedQty:12,serviceQty:1,servicePrice:80,tolerance:1})){const el=$(`[name="${key}"]`);if(el)el.value=n;}updateOrder();}

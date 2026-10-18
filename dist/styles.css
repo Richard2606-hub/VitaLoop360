@@ -11,3 +11,5 @@
 /* Keep secondary copy legible on the soft neutral surfaces. */
 .page-heading p,.metric-head,.metric-foot,.pack-tile p,.card-header p,.activity-copy p,.lot-row p,.footer,.intro-note,.health-label,.muted{color:#72816e}
 .pack-page .pk-demo-note,.pack-page .pk-footnote,.pack-page .pk-card-intro,.pack-page .pk-heading p,.pack-page .pk-check-description,.pack-page .pk-audience-copy p,.pack-page .pk-story-preview p,.pack-page .pk-rule-card p,.pack-page .pk-privacy-note,.pack-page .pk-care-result p,.pack-page .pk-source-lines p,.pack-page .pk-version-note{color:#73826a}
+
+.sidebar{overflow-y:auto;overscroll-behavior:contain}.brand-icon{color:#c4edb3}.sidebar>.brand,.sidebar>.workspace,.sidebar>.nav-label,.sidebar>.nav-separator,.sidebar>.nav-item{flex-shrink:0}
