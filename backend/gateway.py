@@ -2,12 +2,16 @@
 import hashlib
 import json
 import os
+import re
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections import deque
+
+DEFAULT_TOKEN_FACTORY_URL = "https://developer.amd.com.cn/radeon/api/v1"
+DEFAULT_TOKEN_FACTORY_MODEL = "Gemma-4-31B-IT"
 
 
 class GatewayError(RuntimeError):
@@ -17,11 +21,11 @@ class GatewayError(RuntimeError):
 class Gateway:
     def __init__(self, env=None, on_call=None):
         env = os.environ if env is None else env
-        self.base_url = env.get("VITALOOP_BASE_URL", "").strip().rstrip("/")
         self.api_key = env.get("VITALOOP_API_KEY", "").strip()
-        self.model = env.get("VITALOOP_MODEL", "").strip()
-        self.provider = env.get("VITALOOP_PROVIDER", "Configured OpenAI-compatible endpoint")
-        self.timeout = min(30, max(1, float(env.get("VITALOOP_TIMEOUT_SECONDS", "20"))))
+        self.base_url = env.get("VITALOOP_BASE_URL", "").strip().rstrip("/") or (DEFAULT_TOKEN_FACTORY_URL if self.api_key else "")
+        self.model = env.get("VITALOOP_MODEL", "").strip() or (DEFAULT_TOKEN_FACTORY_MODEL if self.api_key else "")
+        self.provider = env.get("VITALOOP_PROVIDER", "AMD Token Factory (Radeon Cloud)" if self.api_key else "Configured OpenAI-compatible endpoint")
+        self.timeout = min(30, max(1, float(env.get("VITALOOP_TIMEOUT_SECONDS", "25"))))
         self.input_price = self._price(env.get("VITALOOP_INPUT_PRICE_PER_MILLION"))
         self.output_price = self._price(env.get("VITALOOP_OUTPUT_PRICE_PER_MILLION"))
         self.semaphore = threading.BoundedSemaphore(6)
@@ -48,13 +52,22 @@ class Gateway:
             raise ValueError("Model prices must be finite and nonnegative.")
         return parsed
 
+    @staticmethod
+    def _parse_json_content(raw_content):
+        cleaned = re.sub(r"<think>.*?</think>", "", str(raw_content or ""), flags=re.DOTALL).strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.DOTALL).strip()
+        if not cleaned.startswith("{") and "{" in cleaned and "}" in cleaned:
+            cleaned = cleaned[cleaned.find("{") : cleaned.rfind("}") + 1]
+        return json.loads(cleaned)
+
     def status(self):
         return {"configured": self.configured, "provider": self.provider if self.configured else "Deterministic synthetic demo", "model": self.model if self.configured else "No model connected", "endpoint": self.endpoint, "calls": self.calls, "tokens": self.tokens if self.usage_complete else None, "input_tokens": self.input_tokens if self.usage_complete else None, "output_tokens": self.output_tokens if self.usage_complete else None, "cost": round(self.cost, 8) if self.usage_complete and self.input_price is not None and self.output_price is not None else None, "latency_ms": self.latency_ms, "successful": self.successful, "pricing_configured": self.input_price is not None and self.output_price is not None, "usage_available": self.usage_complete, "hardware_verified": False, "last_error": self.last_error, "note": "Hardware/provider names are operator configuration; the app cannot attest which GPU serves an endpoint."}
 
     def complete(self, messages, bypass_cache=False):
         if not self.configured:
             raise GatewayError("No model endpoint and model are configured. Deterministic demo remains available.")
-        body = {"model": self.model, "messages": messages, "temperature": 0, "max_tokens": 450, "response_format": {"type": "json_object"}}
+        body = {"model": self.model, "messages": messages, "temperature": 0, "max_tokens": 550, "response_format": {"type": "json_object"}}
         key = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
         with self.lock:
             if key in self.cache and not bypass_cache:
@@ -69,7 +82,11 @@ class Gateway:
                         raise GatewayError("Local rate limit reached (20 calls/minute); retry in a minute.")
                     self.starts.append(now)
                 started = time.perf_counter()
-                headers = {"Content-Type": "application/json", "Accept": "application/json"}
+                headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "User-Agent": "VitaLoop360/1.0 (OpenAI-Compatible; Python)",
+                }
                 if self.api_key:
                     headers["Authorization"] = "Bearer " + self.api_key
                 url = self.base_url if self.base_url.endswith("/chat/completions") else self.base_url + "/chat/completions"
@@ -81,7 +98,7 @@ class Gateway:
                         raise GatewayError("Model response exceeded the response-size limit.")
                     payload = json.loads(raw)
                     elapsed = round((time.perf_counter() - started) * 1000)
-                    usage = payload.get("usage", {})
+                    usage = payload.get("usage") or {}
                     prompt_tokens, completion_tokens = usage.get("prompt_tokens"), usage.get("completion_tokens")
                     metered = all(isinstance(value, int) and not isinstance(value, bool) and value >= 0 for value in (prompt_tokens, completion_tokens))
                     with self.lock:
@@ -99,7 +116,7 @@ class Gateway:
                     if self.on_call:
                         self.on_call({"endpoint": self.endpoint, "model": payload.get("model", self.model), "latency_ms": elapsed, "prompt_tokens": prompt_tokens if metered else None, "completion_tokens": completion_tokens if metered else None, "usage_available": metered, "input_price_per_million": self.input_price, "output_price_per_million": self.output_price})
                     content = payload["choices"][0]["message"]["content"]
-                    parsed = json.loads(content)
+                    parsed = self._parse_json_content(content)
                     if not isinstance(parsed, dict) or not isinstance(parsed.get("text"), str) or not parsed["text"].strip() or len(parsed["text"]) > 10000:
                         raise GatewayError('Model schema rejected: expected {"text": "nonempty cited explanation"}.')
                     self.cache[key] = parsed["text"]

@@ -89,6 +89,18 @@ class Runtime:
                     self.verification = event["verification"]
                 if "explanation" in event:
                     self.explanation = event["explanation"]
+                if event.get("type") == "model.called" and isinstance(event.get("usage"), dict):
+                    u = event["usage"]
+                    self.gateway.calls += 1
+                    self.gateway.successful = True
+                    self.gateway.latency_ms = u.get("latency_ms", self.gateway.latency_ms)
+                    pt, ct = u.get("prompt_tokens"), u.get("completion_tokens")
+                    if isinstance(pt, int) and isinstance(ct, int):
+                        self.gateway.input_tokens += pt
+                        self.gateway.output_tokens += ct
+                        self.gateway.tokens += pt + ct
+                        if self.gateway.input_price is not None and self.gateway.output_price is not None:
+                            self.gateway.cost += (pt * self.gateway.input_price + ct * self.gateway.output_price) / 1_000_000
 
     @staticmethod
     def _load_packs(manifests, discovered_folders=None):

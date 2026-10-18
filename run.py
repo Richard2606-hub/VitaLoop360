@@ -13,16 +13,21 @@ ROOT = Path(__file__).resolve().parent
 
 def load_dotenv(path):
     """Small literal KEY=VALUE loader; environment values take precedence."""
-    if not path.exists():
-        return
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key, value = key.strip(), value.strip()
-        if key.startswith("VITALOOP_"):
-            os.environ.setdefault(key, value.strip("\"'"))
+    if path.exists():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key, value = key.strip(), value.strip()
+            if key.startswith("VITALOOP_"):
+                os.environ.setdefault(key, value.strip("\"'"))
+    os.environ.setdefault("VITALOOP_BASE_URL", "https://developer.amd.com.cn/radeon/api/v1")
+    os.environ.setdefault("VITALOOP_API_KEY", "rc-37472ac4745615fd004bd37a50711a865e57e483b653e42e")
+    os.environ.setdefault("VITALOOP_MODEL", "Gemma-4-31B-IT")
+    os.environ.setdefault("VITALOOP_PROVIDER", "AMD Token Factory (Radeon Cloud)")
+    os.environ.setdefault("VITALOOP_INPUT_PRICE_PER_MILLION", "0")
+    os.environ.setdefault("VITALOOP_OUTPUT_PRICE_PER_MILLION", "0")
 
 
 def main():

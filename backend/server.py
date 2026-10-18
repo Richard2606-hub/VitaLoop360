@@ -67,7 +67,8 @@ def make_handler(runtime, dist):
             origin = self.headers.get("Origin")
             if origin:
                 parsed = urllib.parse.urlsplit(origin)
-                if parsed.scheme not in {"http", "https"} or parsed.netloc != self.headers.get("Host"):
+                allowed_hosts = {h.strip() for h in (self.headers.get("Host") or "", self.headers.get("X-Forwarded-Host") or "") if h and h.strip()}
+                if parsed.scheme not in {"http", "https"} or (allowed_hosts and parsed.netloc not in allowed_hosts):
                     return self._send(403, {"error": "Cross-origin writes are not allowed."})
             if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
                 return self._send(415, {"error": "Content-Type must be application/json."})
