@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+data/*.jsonl
+data/*.tmp
+.venv/
+
+.qa/
+.qa-data/
+.qa-*/
+*.tar.gz

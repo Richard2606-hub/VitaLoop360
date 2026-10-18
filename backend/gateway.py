@@ -1,0 +1,120 @@
+"""Server-only OpenAI-compatible gateway; no unverified inference claims."""
+import hashlib
+import json
+import os
+import threading
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections import deque
+
+
+class GatewayError(RuntimeError):
+    pass
+
+
+class Gateway:
+    def __init__(self, env=None, on_call=None):
+        env = os.environ if env is None else env
+        self.base_url = env.get("VITALOOP_BASE_URL", "").strip().rstrip("/")
+        self.api_key = env.get("VITALOOP_API_KEY", "").strip()
+        self.model = env.get("VITALOOP_MODEL", "").strip()
+        self.provider = env.get("VITALOOP_PROVIDER", "Configured OpenAI-compatible endpoint")
+        self.timeout = min(30, max(1, float(env.get("VITALOOP_TIMEOUT_SECONDS", "20"))))
+        self.input_price = self._price(env.get("VITALOOP_INPUT_PRICE_PER_MILLION"))
+        self.output_price = self._price(env.get("VITALOOP_OUTPUT_PRICE_PER_MILLION"))
+        self.semaphore = threading.BoundedSemaphore(6)
+        self.lock = threading.RLock()
+        self.starts = deque()
+        self.cache = {}
+        self.calls = self.tokens = self.input_tokens = self.output_tokens = 0
+        self.cost = 0.0
+        self.latency_ms = 0
+        self.successful = False
+        self.usage_complete = True
+        self.last_error = None
+        self.on_call = on_call
+        parsed = urllib.parse.urlsplit(self.base_url)
+        self.configured = bool(self.model and self.base_url and parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username and not parsed.password)
+        self.endpoint = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", "")) if self.configured else "Not configured"
+
+    @staticmethod
+    def _price(value):
+        if value in (None, ""):
+            return None
+        parsed = float(value)
+        if parsed < 0 or not __import__("math").isfinite(parsed):
+            raise ValueError("Model prices must be finite and nonnegative.")
+        return parsed
+
+    def status(self):
+        return {"configured": self.configured, "provider": self.provider if self.configured else "Deterministic synthetic demo", "model": self.model if self.configured else "No model connected", "endpoint": self.endpoint, "calls": self.calls, "tokens": self.tokens if self.usage_complete else None, "input_tokens": self.input_tokens if self.usage_complete else None, "output_tokens": self.output_tokens if self.usage_complete else None, "cost": round(self.cost, 8) if self.usage_complete and self.input_price is not None and self.output_price is not None else None, "latency_ms": self.latency_ms, "successful": self.successful, "pricing_configured": self.input_price is not None and self.output_price is not None, "usage_available": self.usage_complete, "hardware_verified": False, "last_error": self.last_error, "note": "Hardware/provider names are operator configuration; the app cannot attest which GPU serves an endpoint."}
+
+    def complete(self, messages, bypass_cache=False):
+        if not self.configured:
+            raise GatewayError("No model endpoint and model are configured. Deterministic demo remains available.")
+        body = {"model": self.model, "messages": messages, "temperature": 0, "max_tokens": 450, "response_format": {"type": "json_object"}}
+        key = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+        with self.lock:
+            if key in self.cache and not bypass_cache:
+                return self.cache[key]
+        with self.semaphore:
+            for attempt in range(3):
+                with self.lock:
+                    now = time.monotonic()
+                    while self.starts and self.starts[0] < now - 60:
+                        self.starts.popleft()
+                    if len(self.starts) >= 20:
+                        raise GatewayError("Local rate limit reached (20 calls/minute); retry in a minute.")
+                    self.starts.append(now)
+                started = time.perf_counter()
+                headers = {"Content-Type": "application/json", "Accept": "application/json"}
+                if self.api_key:
+                    headers["Authorization"] = "Bearer " + self.api_key
+                url = self.base_url if self.base_url.endswith("/chat/completions") else self.base_url + "/chat/completions"
+                request = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
+                try:
+                    with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                        raw = response.read(2_000_001)
+                    if len(raw) > 2_000_000:
+                        raise GatewayError("Model response exceeded the response-size limit.")
+                    payload = json.loads(raw)
+                    elapsed = round((time.perf_counter() - started) * 1000)
+                    usage = payload.get("usage", {})
+                    prompt_tokens, completion_tokens = usage.get("prompt_tokens"), usage.get("completion_tokens")
+                    metered = all(isinstance(value, int) and not isinstance(value, bool) and value >= 0 for value in (prompt_tokens, completion_tokens))
+                    with self.lock:
+                        self.calls += 1
+                        self.latency_ms = elapsed
+                        self.successful = True
+                        self.last_error = None
+                        self.usage_complete = self.usage_complete and metered
+                        if metered:
+                            self.input_tokens += prompt_tokens
+                            self.output_tokens += completion_tokens
+                            self.tokens += prompt_tokens + completion_tokens
+                            if self.input_price is not None and self.output_price is not None:
+                                self.cost += (prompt_tokens * self.input_price + completion_tokens * self.output_price) / 1_000_000
+                    if self.on_call:
+                        self.on_call({"endpoint": self.endpoint, "model": payload.get("model", self.model), "latency_ms": elapsed, "prompt_tokens": prompt_tokens if metered else None, "completion_tokens": completion_tokens if metered else None, "usage_available": metered, "input_price_per_million": self.input_price, "output_price_per_million": self.output_price})
+                    content = payload["choices"][0]["message"]["content"]
+                    parsed = json.loads(content)
+                    if not isinstance(parsed, dict) or not isinstance(parsed.get("text"), str) or not parsed["text"].strip() or len(parsed["text"]) > 10000:
+                        raise GatewayError('Model schema rejected: expected {"text": "nonempty cited explanation"}.')
+                    self.cache[key] = parsed["text"]
+                    return parsed["text"]
+                except urllib.error.HTTPError as exc:
+                    self.last_error = f"Provider returned HTTP {exc.code}."
+                    if exc.code not in {429, 500, 502, 503, 504} or attempt == 2:
+                        raise GatewayError(self.last_error) from None
+                except (TimeoutError, OSError) as exc:
+                    self.last_error = "Model connection failed or timed out."
+                    if attempt == 2:
+                        raise GatewayError(self.last_error) from None
+                except (ValueError, KeyError, IndexError, TypeError) as exc:
+                    self.last_error = "Provider response failed the structured-output schema."
+                    raise GatewayError(self.last_error) from None
+                if attempt < 2:
+                    time.sleep(0.5 * 2 ** attempt)
+        raise GatewayError("Model call failed.")

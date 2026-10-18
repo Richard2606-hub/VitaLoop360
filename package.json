@@ -1,0 +1,11 @@
+{
+  "name": "vitaloop360",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VitaLoop 360 operations console with a Python core and a private browser demonstration",
+  "scripts": {
+    "test:browser-domain": "node tests/test_demo.mjs",
+    "check": "node --check dist/app.js && node --check dist/packs.js && node --check dist/demo.js"
+  }
+}

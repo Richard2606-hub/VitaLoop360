@@ -1,0 +1,811 @@
+{
+  "mode": "demo",
+  "gateway": {
+    "configured": false,
+    "provider": "Deterministic synthetic demo",
+    "model": "No model connected",
+    "endpoint": "Not configured",
+    "calls": 0,
+    "tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": null,
+    "latency_ms": 0,
+    "successful": false,
+    "pricing_configured": false,
+    "usage_available": true,
+    "hardware_verified": false,
+    "last_error": null,
+    "note": "Hardware/provider names are operator configuration; the app cannot attest which GPU serves an endpoint."
+  },
+  "lots": [
+    {
+      "id": "2610-07",
+      "product": "LumaBand Recovery Kit",
+      "units": 1200,
+      "status": "review",
+      "line": "Penang · SMT-04",
+      "destination": "Milan / Kuala Lumpur",
+      "ifu": "2.1"
+    },
+    {
+      "id": "2610-05",
+      "product": "LumaBand Recovery Kit",
+      "units": 840,
+      "status": "released",
+      "line": "Penang · SMT-02",
+      "destination": "Reserve inventory",
+      "ifu": "2.1"
+    }
+  ],
+  "lot": "2610-07",
+  "telemetry": [
+    {
+      "time": "00:00",
+      "energy": 39.52,
+      "good_units": 93,
+      "scrap": 2,
+      "idle_energy": 4.55,
+      "reactive_kvarh": 4.55,
+      "energy_per_unit": 0.4249,
+      "scrap_rate": 2.11,
+      "robust_z": 0.38,
+      "isolation_score": 0.5423,
+      "anomaly": false
+    },
+    {
+      "time": "00:15",
+      "energy": 43.75,
+      "good_units": 100,
+      "scrap": 3,
+      "idle_energy": 5.47,
+      "reactive_kvarh": 5.03,
+      "energy_per_unit": 0.4375,
+      "scrap_rate": 2.91,
+      "robust_z": 0.23,
+      "isolation_score": 0.4606,
+      "anomaly": false
+    },
+    {
+      "time": "00:30",
+      "energy": 46.19,
+      "good_units": 107,
+      "scrap": 2,
+      "idle_energy": 6.24,
+      "reactive_kvarh": 5.31,
+      "energy_per_unit": 0.4317,
+      "scrap_rate": 1.83,
+      "robust_z": 0.05,
+      "isolation_score": 0.4806,
+      "anomaly": false
+    },
+    {
+      "time": "00:45",
+      "energy": 40.36,
+      "good_units": 97,
+      "scrap": 3,
+      "idle_energy": 4.64,
+      "reactive_kvarh": 4.64,
+      "energy_per_unit": 0.4161,
+      "scrap_rate": 3.0,
+      "robust_z": 0.81,
+      "isolation_score": 0.5156,
+      "anomaly": false
+    },
+    {
+      "time": "01:00",
+      "energy": 43.01,
+      "good_units": 104,
+      "scrap": 2,
+      "idle_energy": 5.38,
+      "reactive_kvarh": 4.95,
+      "energy_per_unit": 0.4136,
+      "scrap_rate": 1.89,
+      "robust_z": 0.94,
+      "isolation_score": 0.505,
+      "anomaly": false
+    },
+    {
+      "time": "01:15",
+      "energy": 40.21,
+      "good_units": 94,
+      "scrap": 3,
+      "idle_energy": 5.43,
+      "reactive_kvarh": 4.62,
+      "energy_per_unit": 0.4278,
+      "scrap_rate": 3.09,
+      "robust_z": 0.24,
+      "isolation_score": 0.5195,
+      "anomaly": false
+    },
+    {
+      "time": "01:30",
+      "energy": 44.24,
+      "good_units": 101,
+      "scrap": 2,
+      "idle_energy": 5.09,
+      "reactive_kvarh": 5.09,
+      "energy_per_unit": 0.438,
+      "scrap_rate": 1.94,
+      "robust_z": 0.25,
+      "isolation_score": 0.5218,
+      "anomaly": false
+    },
+    {
+      "time": "01:45",
+      "energy": 46.35,
+      "good_units": 108,
+      "scrap": 3,
+      "idle_energy": 5.79,
+      "reactive_kvarh": 5.33,
+      "energy_per_unit": 0.4292,
+      "scrap_rate": 2.7,
+      "robust_z": 0.18,
+      "isolation_score": 0.4352,
+      "anomaly": false
+    },
+    {
+      "time": "02:00",
+      "energy": 40.6,
+      "good_units": 98,
+      "scrap": 2,
+      "idle_energy": 5.48,
+      "reactive_kvarh": 4.67,
+      "energy_per_unit": 0.4143,
+      "scrap_rate": 2.0,
+      "robust_z": 0.9,
+      "isolation_score": 0.4992,
+      "anomaly": false
+    },
+    {
+      "time": "02:15",
+      "energy": 65.11,
+      "good_units": 105,
+      "scrap": 8,
+      "idle_energy": 17.58,
+      "reactive_kvarh": 14.32,
+      "energy_per_unit": 0.6201,
+      "scrap_rate": 7.08,
+      "robust_z": 9.1,
+      "isolation_score": 0.6071,
+      "anomaly": true
+    },
+    {
+      "time": "02:30",
+      "energy": 60.37,
+      "good_units": 95,
+      "scrap": 9,
+      "idle_energy": 16.3,
+      "reactive_kvarh": 13.28,
+      "energy_per_unit": 0.6355,
+      "scrap_rate": 8.65,
+      "robust_z": 9.85,
+      "isolation_score": 0.5424,
+      "anomaly": true
+    },
+    {
+      "time": "02:45",
+      "energy": 65.57,
+      "good_units": 102,
+      "scrap": 10,
+      "idle_energy": 17.7,
+      "reactive_kvarh": 14.43,
+      "energy_per_unit": 0.6428,
+      "scrap_rate": 8.93,
+      "robust_z": 10.21,
+      "isolation_score": 0.6104,
+      "anomaly": true
+    },
+    {
+      "time": "03:00",
+      "energy": 68.82,
+      "good_units": 109,
+      "scrap": 8,
+      "idle_energy": 18.58,
+      "reactive_kvarh": 15.14,
+      "energy_per_unit": 0.6314,
+      "scrap_rate": 6.84,
+      "robust_z": 9.65,
+      "isolation_score": 0.5839,
+      "anomaly": true
+    },
+    {
+      "time": "03:15",
+      "energy": 61.17,
+      "good_units": 99,
+      "scrap": 9,
+      "idle_energy": 16.52,
+      "reactive_kvarh": 13.46,
+      "energy_per_unit": 0.6179,
+      "scrap_rate": 8.33,
+      "robust_z": 9.0,
+      "isolation_score": 0.5833,
+      "anomaly": true
+    },
+    {
+      "time": "03:30",
+      "energy": 65.95,
+      "good_units": 106,
+      "scrap": 10,
+      "idle_energy": 17.81,
+      "reactive_kvarh": 14.51,
+      "energy_per_unit": 0.6222,
+      "scrap_rate": 8.62,
+      "robust_z": 9.2,
+      "isolation_score": 0.5667,
+      "anomaly": true
+    },
+    {
+      "time": "03:45",
+      "energy": 61.24,
+      "good_units": 96,
+      "scrap": 8,
+      "idle_energy": 16.53,
+      "reactive_kvarh": 13.47,
+      "energy_per_unit": 0.6379,
+      "scrap_rate": 7.69,
+      "robust_z": 9.97,
+      "isolation_score": 0.5843,
+      "anomaly": true
+    },
+    {
+      "time": "04:00",
+      "energy": 66.13,
+      "good_units": 103,
+      "scrap": 9,
+      "idle_energy": 17.86,
+      "reactive_kvarh": 14.55,
+      "energy_per_unit": 0.642,
+      "scrap_rate": 8.04,
+      "robust_z": 10.17,
+      "isolation_score": 0.5972,
+      "anomaly": true
+    },
+    {
+      "time": "04:15",
+      "energy": 58.46,
+      "good_units": 93,
+      "scrap": 10,
+      "idle_energy": 15.78,
+      "reactive_kvarh": 12.86,
+      "energy_per_unit": 0.6286,
+      "scrap_rate": 9.71,
+      "robust_z": 9.52,
+      "isolation_score": 0.613,
+      "anomaly": true
+    },
+    {
+      "time": "04:30",
+      "energy": 41.22,
+      "good_units": 100,
+      "scrap": 2,
+      "idle_energy": 4.74,
+      "reactive_kvarh": 4.74,
+      "energy_per_unit": 0.4122,
+      "scrap_rate": 1.96,
+      "robust_z": 1.0,
+      "isolation_score": 0.5066,
+      "anomaly": false
+    },
+    {
+      "time": "04:45",
+      "energy": 44.89,
+      "good_units": 107,
+      "scrap": 3,
+      "idle_energy": 5.61,
+      "reactive_kvarh": 5.16,
+      "energy_per_unit": 0.4195,
+      "scrap_rate": 2.73,
+      "robust_z": 0.64,
+      "isolation_score": 0.4574,
+      "anomaly": false
+    },
+    {
+      "time": "05:00",
+      "energy": 42.19,
+      "good_units": 97,
+      "scrap": 2,
+      "idle_energy": 5.7,
+      "reactive_kvarh": 4.85,
+      "energy_per_unit": 0.4349,
+      "scrap_rate": 2.02,
+      "robust_z": 0.1,
+      "isolation_score": 0.4745,
+      "anomaly": false
+    },
+    {
+      "time": "05:15",
+      "energy": 45.32,
+      "good_units": 104,
+      "scrap": 3,
+      "idle_energy": 5.21,
+      "reactive_kvarh": 5.21,
+      "energy_per_unit": 0.4358,
+      "scrap_rate": 2.8,
+      "robust_z": 0.14,
+      "isolation_score": 0.485,
+      "anomaly": false
+    },
+    {
+      "time": "05:30",
+      "energy": 39.56,
+      "good_units": 94,
+      "scrap": 2,
+      "idle_energy": 4.94,
+      "reactive_kvarh": 4.55,
+      "energy_per_unit": 0.4209,
+      "scrap_rate": 2.08,
+      "robust_z": 0.58,
+      "isolation_score": 0.4624,
+      "anomaly": false
+    },
+    {
+      "time": "05:45",
+      "energy": 41.61,
+      "good_units": 101,
+      "scrap": 3,
+      "idle_energy": 5.62,
+      "reactive_kvarh": 4.79,
+      "energy_per_unit": 0.412,
+      "scrap_rate": 2.88,
+      "robust_z": 1.01,
+      "isolation_score": 0.5555,
+      "anomaly": false
+    },
+    {
+      "time": "06:00",
+      "energy": 45.6,
+      "good_units": 108,
+      "scrap": 2,
+      "idle_energy": 5.24,
+      "reactive_kvarh": 5.24,
+      "energy_per_unit": 0.4222,
+      "scrap_rate": 1.82,
+      "robust_z": 0.51,
+      "isolation_score": 0.5406,
+      "anomaly": false
+    },
+    {
+      "time": "06:15",
+      "energy": 42.78,
+      "good_units": 98,
+      "scrap": 3,
+      "idle_energy": 5.35,
+      "reactive_kvarh": 4.92,
+      "energy_per_unit": 0.4365,
+      "scrap_rate": 2.97,
+      "robust_z": 0.18,
+      "isolation_score": 0.4594,
+      "anomaly": false
+    },
+    {
+      "time": "06:30",
+      "energy": 45.56,
+      "good_units": 105,
+      "scrap": 2,
+      "idle_energy": 6.15,
+      "reactive_kvarh": 5.24,
+      "energy_per_unit": 0.4339,
+      "scrap_rate": 1.87,
+      "robust_z": 0.05,
+      "isolation_score": 0.4868,
+      "anomaly": false
+    },
+    {
+      "time": "06:45",
+      "energy": 39.74,
+      "good_units": 95,
+      "scrap": 3,
+      "idle_energy": 4.57,
+      "reactive_kvarh": 4.57,
+      "energy_per_unit": 0.4183,
+      "scrap_rate": 3.06,
+      "robust_z": 0.7,
+      "isolation_score": 0.5037,
+      "anomaly": false
+    },
+    {
+      "time": "07:00",
+      "energy": 42.07,
+      "good_units": 102,
+      "scrap": 2,
+      "idle_energy": 5.26,
+      "reactive_kvarh": 4.84,
+      "energy_per_unit": 0.4125,
+      "scrap_rate": 1.92,
+      "robust_z": 0.99,
+      "isolation_score": 0.4867,
+      "anomaly": false
+    },
+    {
+      "time": "07:15",
+      "energy": 46.33,
+      "good_units": 109,
+      "scrap": 3,
+      "idle_energy": 6.25,
+      "reactive_kvarh": 5.33,
+      "energy_per_unit": 0.425,
+      "scrap_rate": 2.68,
+      "robust_z": 0.38,
+      "isolation_score": 0.48,
+      "anomaly": false
+    },
+    {
+      "time": "07:30",
+      "energy": 43.32,
+      "good_units": 99,
+      "scrap": 2,
+      "idle_energy": 4.98,
+      "reactive_kvarh": 4.98,
+      "energy_per_unit": 0.4376,
+      "scrap_rate": 1.98,
+      "robust_z": 0.23,
+      "isolation_score": 0.4849,
+      "anomaly": false
+    },
+    {
+      "time": "07:45",
+      "energy": 45.76,
+      "good_units": 106,
+      "scrap": 3,
+      "idle_energy": 5.72,
+      "reactive_kvarh": 5.26,
+      "energy_per_unit": 0.4317,
+      "scrap_rate": 2.75,
+      "robust_z": 0.05,
+      "isolation_score": 0.4398,
+      "anomaly": false
+    }
+  ],
+  "baseline": {
+    "energy_per_unit": 0.42,
+    "scrap_rate": 2.1,
+    "idle_share": 12.0,
+    "reactive_ratio": 0.12
+  },
+  "metrics": {
+    "energy_per_unit": 0.483,
+    "scrap_rate": 4.09,
+    "idle_share": 17.79,
+    "reactive_ratio": 0.153,
+    "waste_index": 149.2,
+    "energy_delta": 15.0,
+    "scrap_delta": 94.8,
+    "good_units": 3235,
+    "scrap_units": 138,
+    "energy_kwh": 1563.0,
+    "estimated_excess_cost": 98.06,
+    "tariff": 0.48,
+    "anomaly_count": 9
+  },
+  "events": [
+    {
+      "id": "evt-00001",
+      "time": "2026-10-18T08:16:49.806+00:00",
+      "pack": "core",
+      "type": "runtime.ready",
+      "lot": "2610-07",
+      "title": "Shared core ready",
+      "detail": "Fictional Lumora Wellness reference scenario. Authored telemetry; no AMD call has been made. Four packs are simulated walkthroughs.",
+      "actor": "System",
+      "mode": "demo",
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hash": "e74b8f7622ad5a9917e49086613aa256fd02ada2de2e1715300eb70f61cb0576"
+    },
+    {
+      "id": "evt-00002",
+      "time": "2026-10-18T08:16:49.807+00:00",
+      "pack": "factory",
+      "type": "telemetry.loaded",
+      "lot": "2610-07",
+      "title": "Night-shift telemetry loaded",
+      "detail": "32 authored fifteen-minute windows; metrics calculated deterministically.",
+      "actor": "System",
+      "mode": "demo",
+      "previous_hash": "e74b8f7622ad5a9917e49086613aa256fd02ada2de2e1715300eb70f61cb0576",
+      "metrics": {
+        "energy_per_unit": 0.483,
+        "scrap_rate": 4.09,
+        "idle_share": 17.79,
+        "reactive_ratio": 0.153,
+        "waste_index": 149.2,
+        "energy_delta": 15.0,
+        "scrap_delta": 94.8,
+        "good_units": 3235,
+        "scrap_units": 138,
+        "energy_kwh": 1563.0,
+        "estimated_excess_cost": 98.06,
+        "tariff": 0.48,
+        "anomaly_count": 9
+      },
+      "hash": "6262d87c79e2a1188ebe8233497fc5e51fde1bf393c8649cf445ef30a557eacc"
+    },
+    {
+      "id": "evt-00003",
+      "time": "2026-10-18T08:16:49.807+00:00",
+      "pack": "factory",
+      "type": "anomaly.flagged",
+      "lot": "2610-07",
+      "title": "Energy and scrap anomaly detected",
+      "detail": "9 flagged windows; profile drift is an unconfirmed hypothesis. Supervisor review required.",
+      "actor": "System",
+      "mode": "demo",
+      "previous_hash": "6262d87c79e2a1188ebe8233497fc5e51fde1bf393c8649cf445ef30a557eacc",
+      "metrics": {
+        "energy_per_unit": 0.483,
+        "scrap_rate": 4.09,
+        "idle_share": 17.79,
+        "reactive_ratio": 0.153,
+        "waste_index": 149.2,
+        "energy_delta": 15.0,
+        "scrap_delta": 94.8,
+        "good_units": 3235,
+        "scrap_units": 138,
+        "energy_kwh": 1563.0,
+        "estimated_excess_cost": 98.06,
+        "tariff": 0.48,
+        "anomaly_count": 9
+      },
+      "hash": "46a586c40aecce61428fd31f1668d733840858365c16bfe5923ff8099f4a28ef"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "hold",
+      "pack": "factory",
+      "lot": "2610-07",
+      "title": "Review and hold affected lot",
+      "detail": "A named supervisor must approve containment and record a reason.",
+      "status": "pending"
+    },
+    {
+      "id": "corrective",
+      "pack": "factory",
+      "lot": "2610-07",
+      "title": "Approve profile-verification work",
+      "detail": "Records an approved work request; does not change the oven.",
+      "status": "pending"
+    }
+  ],
+  "documents": [
+    {
+      "id": "SOP-017-v3.2-4.2",
+      "pack": "factory",
+      "title": "Reflow oven profile verification",
+      "version": "3.2",
+      "section": "4.2",
+      "text": "SYNTHETIC PROCEDURE — fictional demonstration only. After heating-element replacement, a process engineer must verify the thermal profile against the approved recipe before the next production release. Record the profile and engineer sign-off. An energy anomaly is a hypothesis trigger, not proof of a faulty profile."
+    },
+    {
+      "id": "SOP-017-v3.2-4.3",
+      "pack": "factory",
+      "title": "Containment and quality release",
+      "version": "3.2",
+      "section": "4.3",
+      "text": "SYNTHETIC PROCEDURE — fictional demonstration only. The supervisor may place the affected lot on hold pending profile verification and calibration review. Only a named quality reviewer may release a held lot after corrective work and evidence are recorded. No machine parameter changes are made by VitaLoop."
+    },
+    {
+      "id": "SOP-024-v1.4-2.1",
+      "pack": "factory",
+      "title": "Idle-load and compressed-air inspection",
+      "version": "1.4",
+      "section": "2.1",
+      "text": "SYNTHETIC PROCEDURE — fictional demonstration only. Review idle-load intervals and inspect for air leaks, standby equipment and incomplete shutdown. A supervisor must approve the work order. Do not claim a confirmed root cause or realized savings before a measured follow-up."
+    },
+    {
+      "id": "TERMS-008-v1.0-3",
+      "pack": "order",
+      "title": "Supplier service authorization",
+      "version": "1.0",
+      "section": "3",
+      "text": "SYNTHETIC TERMS. Services not listed on the purchase order require written buyer approval before invoice payment. Disputed invoice lines are referred to the supplier; payment is never autonomous."
+    },
+    {
+      "id": "BRAND-v1.0-2",
+      "pack": "experience",
+      "title": "Lumora style and claims guide",
+      "version": "1.0",
+      "section": "2",
+      "text": "SYNTHETIC BRAND GUIDE. Use calm, practical language. Acknowledge replacement delays. Never promise healing, treatment or a clinical outcome. Include a link to the lot-matched instructions. A brand reviewer approves each experience."
+    },
+    {
+      "id": "IFU-v2.1-1",
+      "pack": "care",
+      "title": "LumaBand kit instructions — sample",
+      "version": "2.1",
+      "section": "1",
+      "text": "SYNTHETIC INSTRUCTIONS, not clinical guidance. For the fictional kit: confirm that the lot on the box matches the supplied instructions; keep the instruction leaflet and clinic contact information accessible. Follow the instructions supplied by your actual care team."
+    },
+    {
+      "id": "IFU-v2.1-4",
+      "pack": "care",
+      "title": "When to contact the care team — sample",
+      "version": "2.1",
+      "section": "4",
+      "text": "SYNTHETIC INSTRUCTIONS, not clinical guidance. In this fictional workflow, reported skin irritation, persistent discomfort or a damaged strap is routed for nurse review. This application cannot diagnose a symptom or decide treatment. No nurse or emergency service is contacted by this demonstration."
+    }
+  ],
+  "verification": {
+    "status": "passed",
+    "coverage": 100.0,
+    "facts": [
+      {
+        "id": "energy_per_unit",
+        "value": 0.483
+      },
+      {
+        "id": "scrap_rate",
+        "value": 4.09
+      },
+      {
+        "id": "idle_share",
+        "value": 17.79
+      },
+      {
+        "id": "reactive_ratio",
+        "value": 0.153
+      },
+      {
+        "id": "waste_index",
+        "value": 149.2
+      },
+      {
+        "id": "energy_delta",
+        "value": 15.0
+      },
+      {
+        "id": "scrap_delta",
+        "value": 94.8
+      },
+      {
+        "id": "good_units",
+        "value": 3235
+      },
+      {
+        "id": "scrap_units",
+        "value": 138
+      },
+      {
+        "id": "energy_kwh",
+        "value": 1563.0
+      },
+      {
+        "id": "estimated_excess_cost",
+        "value": 98.06
+      },
+      {
+        "id": "tariff",
+        "value": 0.48
+      },
+      {
+        "id": "anomaly_count",
+        "value": 9
+      }
+    ],
+    "citations": [
+      "FACT:energy_delta",
+      "FACT:energy_per_unit",
+      "SOP-017-v3.2-4.2",
+      "SOP-024-v1.4-2.1"
+    ],
+    "findings": [],
+    "scope": "Numeric lock and citation coverage; not semantic entailment or clinical validation."
+  },
+  "packs": [
+    {
+      "id": "factory",
+      "name": "Factory Sentinel",
+      "status": "ready",
+      "version": "0.1.0",
+      "track": "Intelligent Industry",
+      "subscriptions": [],
+      "publishes": [
+        "anomaly.flagged",
+        "lot.held",
+        "lot.released",
+        "corrective.approved"
+      ],
+      "capabilities": [
+        "telemetry.read",
+        "procedure.retrieve",
+        "approval.request"
+      ]
+    },
+    {
+      "id": "order",
+      "name": "Compliance & Order Hub",
+      "status": "walkthrough",
+      "version": "0.1.0",
+      "track": "Evolus Business Agents",
+      "subscriptions": [
+        "lot.held"
+      ],
+      "publishes": [
+        "order.exception",
+        "stock.reallocated"
+      ],
+      "capabilities": [
+        "simulation"
+      ]
+    },
+    {
+      "id": "demand",
+      "name": "Demand & Retention Brain",
+      "status": "walkthrough",
+      "version": "0.1.0",
+      "track": "Reinvent Commerce",
+      "subscriptions": [
+        "stock.reallocated"
+      ],
+      "publishes": [
+        "offer.proposed"
+      ],
+      "capabilities": [
+        "simulation"
+      ]
+    },
+    {
+      "id": "experience",
+      "name": "Adaptive Unboxing Studio",
+      "status": "walkthrough",
+      "version": "0.1.0",
+      "track": "Create a New Kind of Experience",
+      "subscriptions": [
+        "offer.proposed"
+      ],
+      "publishes": [
+        "experience.generated"
+      ],
+      "capabilities": [
+        "simulation"
+      ]
+    },
+    {
+      "id": "care",
+      "name": "SafeCare Navigator",
+      "status": "walkthrough",
+      "version": "0.1.0",
+      "track": "Health and Wellbeing",
+      "subscriptions": [
+        "experience.generated"
+      ],
+      "publishes": [
+        "instructions.bound",
+        "care.escalated",
+        "care.refused",
+        "care.answered"
+      ],
+      "capabilities": [
+        "simulation"
+      ]
+    }
+  ],
+  "explanation": {
+    "text": "Shift energy intensity is 0.483 kWh per good unit, 15.0% above the authored baseline. [FACT:energy_per_unit] [FACT:energy_delta]\nAn unverified thermal profile after element replacement is one possible explanation, not a confirmed root cause; request the process engineer's profile record. [SOP-017-v3.2-4.2]\nReview idle-load intervals and inspect standby equipment before proposing corrective work; savings remain unmeasured. [SOP-024-v1.4-2.1]",
+    "citations": [
+      "FACT:energy_per_unit",
+      "FACT:energy_delta",
+      "SOP-017-v3.2-4.2",
+      "SOP-024-v1.4-2.1"
+    ],
+    "source": "Deterministic synthetic demo"
+  },
+  "ledger_valid": true,
+  "formulas": {
+    "energy_per_unit": "sum(energy_kwh) / sum(good_units)",
+    "scrap_rate": "100 × sum(scrap_units) / (sum(good_units) + sum(scrap_units))",
+    "idle_share": "100 × sum(idle_energy_kwh) / sum(energy_kwh)",
+    "reactive_ratio": "sum(reactive_kvarh) / sum(energy_kwh); diagnostic proxy, not a billed penalty",
+    "waste_index": "100 × (0.40×energy/baseline + 0.35×scrap/baseline + 0.15×idle/baseline + 0.10×reactive/baseline); baseline = 100",
+    "estimated_excess_cost": "max(0, energy_kwh − good_units × 0.42 kWh/unit) × RM0.48/kWh; counterfactual estimate, not realized savings",
+    "anomaly_count": "Count windows where energy robust MAD z-score > 3.5 OR seeded Isolation Forest score > 0.64 (64 trees, seed 360)"
+  },
+  "scenario": {
+    "company": "Lumora Wellness",
+    "fictional": true,
+    "data_source": "Authored synthetic fixtures; not a plant pilot or imported UCI dataset",
+    "currency": "MYR",
+    "timezone": "Asia/Kuala_Lumpur",
+    "date": "2026-10-13"
+  }
+}
