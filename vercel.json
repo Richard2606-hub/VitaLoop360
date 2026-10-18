@@ -6,7 +6,7 @@
   "buildCommand": "node --check dist/app.js && node --check dist/packs.js && node --check dist/demo.js && node tests/test_demo.mjs",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.py" }
+    { "source": "/api/:route*", "destination": "/api/index.py?__route=:route*" }
   ],
   "headers": [
     {

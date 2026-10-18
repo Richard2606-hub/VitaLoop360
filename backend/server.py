@@ -30,8 +30,17 @@ def make_handler(runtime, dist):
             self.end_headers()
             self.wfile.write(body)
 
+        def _resolve_path(self, default_api_subpath="state"):
+            split = urllib.parse.urlsplit(self.path)
+            path = split.path
+            query = urllib.parse.parse_qs(split.query)
+            if path in {"/api/index.py", "/api/index", "/api"}:
+                route = query.get("__route", [default_api_subpath])[0].lstrip("/")
+                return "/api/" + (route or default_api_subpath)
+            return path
+
         def do_GET(self):
-            path = urllib.parse.urlsplit(self.path).path
+            path = self._resolve_path("state")
             if path == "/api/state":
                 return self._send(200, runtime.state())
             if path == "/api/ledger":
@@ -61,7 +70,7 @@ def make_handler(runtime, dist):
             self._send(200, target.read_bytes(), mime)
 
         def do_POST(self):
-            path = urllib.parse.urlsplit(self.path).path
+            path = self._resolve_path("action")
             if path != "/api/action":
                 return self._send(404, {"error": "API route not found."})
             origin = self.headers.get("Origin")
