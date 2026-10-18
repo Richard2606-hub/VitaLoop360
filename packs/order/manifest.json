@@ -1,0 +1,29 @@
+{
+  "id": "order",
+  "name": "Compliance & Order Hub",
+  "version": "0.2.0",
+  "track": "Evolus Business Agents",
+  "owner_role": "Accounts-Payable & Order-Management Clerk",
+  "status": "walkthrough",
+  "subscriptions": [
+    "lot.held"
+  ],
+  "publishes": [
+    "order.exception",
+    "stock.reallocated"
+  ],
+  "capabilities": [
+    "simulation",
+    "document.extract",
+    "terms.retrieve",
+    "three_way_match.compute",
+    "approval.request"
+  ],
+  "approval_roles": [
+    "AP & Order Management Clerk",
+    "Finance Controller"
+  ],
+  "documents": [
+    "TERMS-008-v1.0-3"
+  ]
+}

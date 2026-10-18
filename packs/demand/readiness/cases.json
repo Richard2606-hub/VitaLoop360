@@ -1,0 +1,20 @@
+{
+  "pack": "demand",
+  "cases": [
+    {
+      "id": "demand-happy-rop-ev",
+      "type": "happy_path",
+      "title": "Holt-Winters backtest and positive EV retention offer",
+      "assumptions": {"mean": 18, "std": 4.2, "lead": 10, "z": 1.65, "churn": 0.35, "ltv": 420, "uplift": 0.2, "offerCost": 15},
+      "expected_reorder_point": 202,
+      "expected_ev": 14.4
+    },
+    {
+      "id": "demand-twin-negative-ev",
+      "type": "adversarial_twin",
+      "title": "Retention offer cost exceeds expected churn-reduction benefit",
+      "assumptions": {"mean": 18, "std": 4.2, "lead": 10, "z": 1.65, "churn": 0.1, "ltv": 200, "uplift": 0.1, "offerCost": 25},
+      "expected_ev": -23.0
+    }
+  ]
+}

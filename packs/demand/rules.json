@@ -1,0 +1,29 @@
+{
+  "pack": "demand",
+  "coverage_floor": 100.0,
+  "thresholds": {
+    "default_mean_daily_demand": 18.0,
+    "default_std_daily_demand": 4.2,
+    "default_lead_time_days": 10,
+    "default_service_z": 1.65,
+    "holt_winters_alpha": 0.35,
+    "holt_winters_beta": 0.10,
+    "holt_winters_gamma": 0.25,
+    "season_length": 7,
+    "weibull_lambda_days": 14.0,
+    "weibull_k_shape": 1.8
+  },
+  "refusal_rules": [
+    {
+      "id": "no_llm_forecasting",
+      "description": "Language models may never generate forecast numbers, safety stock, reorder points, or churn probabilities."
+    }
+  ],
+  "escalation_rules": [
+    {
+      "id": "stockout_within_lead_time",
+      "trigger": "usable_stock < reorder_point",
+      "assignee_role": "Demand Planner"
+    }
+  ]
+}

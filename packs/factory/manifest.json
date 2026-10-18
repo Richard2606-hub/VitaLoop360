@@ -1,0 +1,32 @@
+{
+  "id": "factory",
+  "name": "Factory Sentinel",
+  "version": "0.2.0",
+  "track": "Intelligent Industry",
+  "owner_role": "Shift Supervisor / Process Engineer",
+  "status": "ready",
+  "subscriptions": [],
+  "publishes": [
+    "anomaly.flagged",
+    "lot.held",
+    "lot.released",
+    "corrective.approved"
+  ],
+  "capabilities": [
+    "telemetry.read",
+    "procedure.retrieve",
+    "model.explain",
+    "fact.verify",
+    "approval.request"
+  ],
+  "approval_roles": [
+    "Shift Supervisor",
+    "Process Engineer",
+    "Quality Reviewer"
+  ],
+  "documents": [
+    "SOP-017-v3.2-4.2",
+    "SOP-017-v3.2-4.3",
+    "SOP-024-v1.4-2.1"
+  ]
+}

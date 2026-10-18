@@ -1,0 +1,42 @@
+{
+  "pack": "factory",
+  "coverage_floor": 100.0,
+  "numeric_tolerance_rel": 0.00001,
+  "numeric_tolerance_abs": 0.0005,
+  "thresholds": {
+    "robust_mad_z": 3.5,
+    "isolation_score": 0.64,
+    "isolation_trees": 64,
+    "random_seed": 360,
+    "baseline_energy_per_unit_kwh": 0.42,
+    "baseline_scrap_rate_pct": 2.1,
+    "baseline_idle_share_pct": 12.0,
+    "baseline_reactive_ratio": 0.12,
+    "tariff_myr_per_kwh": 0.48
+  },
+  "refusal_rules": [
+    {
+      "id": "no_autonomous_parameter_change",
+      "description": "Never issue direct machine parameter commands or claim realized energy savings before measurement."
+    },
+    {
+      "id": "no_unlocked_numbers",
+      "description": "Reject any numeric claim in model output that does not match a deterministic locked fact."
+    }
+  ],
+  "escalation_rules": [
+    {
+      "id": "anomaly_excursion_hold",
+      "trigger": "anomaly_count > 0",
+      "assignee_role": "Shift Supervisor",
+      "action": "hold"
+    },
+    {
+      "id": "release_requires_corrective",
+      "trigger": "lot.status == 'held'",
+      "assignee_role": "Quality Reviewer",
+      "prerequisite": "corrective.approved"
+    }
+  ],
+  "redaction_policy": "redact_operator_pii_before_external_model"
+}

@@ -88,11 +88,23 @@ python run.py --export-demo dist/demo-data.json
 
 This export does not make a model call and does not replay a recorded AMD run.
 
-## Check the implementation
+## Check the implementation & run hard tests
+
+Run the 28-test Python unit/integration/concurrency/HTTP suite, JavaScript module syntax checks, browser-domain state-machine checks, the 18-case adversarial readiness suite, and the evaluation metrics report:
 
 ```powershell
 python -m unittest discover -s tests -v
+npm run check
+npm run test:browser-domain
+python run.py --batch
+python run.py --demo --metrics
 ```
+
+Additional execution modes (`run.py`):
+- `python run.py --demo --port 8765` — Serve interactive console in deterministic demo mode.
+- `python run.py --replay data/ledger.jsonl --port 8765` (or `--mode replay`) — Serve console in read-only replay mode from a saved JSONL ledger.
+- `python run.py --batch` (or `--mode batch`) — Execute all 18 happy-path and adversarial twin readiness cases across all 5 installed capability packs (`packs/*`).
+- `python run.py --demo --metrics` — Print the complete Proposal Section 11 Evaluation & Metrics JSON report (telemetry, domain metrics, Holt-Winters vs. Seasonal Naive backtest, verification outcomes, guard & PII redaction statistics, readiness pass rate, and SHA-256 thread integrity).
 
 Use the [manual acceptance checklist](docs/acceptance-checklist.md) to check the running console, approval transitions, evidence, and responsive layout. Model-endpoint checks require actual credentials and are separate from offline checks.
 

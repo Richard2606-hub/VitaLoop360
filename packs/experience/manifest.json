@@ -1,0 +1,27 @@
+{
+  "id": "experience",
+  "name": "Adaptive Unboxing Studio",
+  "version": "0.2.0",
+  "track": "Create a New Kind of Experience",
+  "owner_role": "Brand Experience Manager",
+  "status": "walkthrough",
+  "subscriptions": [
+    "offer.proposed"
+  ],
+  "publishes": [
+    "experience.generated"
+  ],
+  "capabilities": [
+    "simulation",
+    "style_bible.validate",
+    "story.render",
+    "unit_economics.meter",
+    "approval.request"
+  ],
+  "approval_roles": [
+    "Brand Experience Manager"
+  ],
+  "documents": [
+    "BRAND-v1.0-2"
+  ]
+}

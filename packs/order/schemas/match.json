@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ThreeWayMatchResult",
+  "type": "object",
+  "required": ["matched", "invoice_total", "variance", "allocated_units"],
+  "properties": {
+    "matched": {"type": "boolean"},
+    "invoice_total": {"type": "number"},
+    "variance": {"type": "number"},
+    "allocated_units": {"type": "integer"}
+  }
+}

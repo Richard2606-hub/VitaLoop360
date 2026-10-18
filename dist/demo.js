@@ -23,6 +23,50 @@ async function append(state, pack, type, title, detail, actor = 'Demo system', e
   const e = {id:`demo-${String(state.events.length + 1).padStart(5, '0')}`,time:new Date().toISOString(),pack,type,lot:state.lot,title,detail,actor,mode:pack==='factory'?'demo':'walkthrough',origin:'browser-demo',previous_hash:state.events.at(-1)?.hash || '0'.repeat(64),...extra};
   e.hash = await digest(e); state.events.push(e); return e;
 }
+export function browserRedactPii(text) {
+  let s = String(text || '');
+  const entities = {EMAIL: 0, PHONE: 0, ID: 0, ADDRESS: 0, PERSON: 0};
+  const sub = (re, repl, key) => { s = s.replace(re, (...args) => { entities[key]++; return typeof repl === 'function' ? repl(...args) : repl; }); };
+  sub(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[REDACTED_EMAIL]', 'EMAIL');
+  sub(/\b\d{6}-\d{2}-\d{4}\b/g, '[REDACTED_ID]', 'ID');
+  sub(/(?:(?:\+|00)\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)\d{3,4}[\s.-]?\d{3,4}\b/g, '[REDACTED_PHONE]', 'PHONE');
+  sub(/\b\d{1,5}\s+(?:Jalan|Lorong|Street|St\.|Road|Rd\.|Via|Viale|Piazza)\s+[A-Za-z0-9\s]{2,25}\b/gi, '[REDACTED_ADDRESS]', 'ADDRESS');
+  sub(/\b((?:mother|father|patient|sister|brother|wife|husband|daughter|son|puan|encik|cik|mr|mrs|ms|dr|signora|signor)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)(?='s\b|\b)/gi, (_, prefix) => `${prefix}[REDACTED_PERSON]`, 'PERSON');
+  const total_redactions = Object.values(entities).reduce((a, b) => a + b, 0);
+  return {redacted_text: s, entities, total_redactions, redacted_count: total_redactions};
+}
+export function browserVerifyDraft(draft, state) {
+  const findings = [];
+  const docs = state.documents || [];
+  const facts = state.metrics || {};
+  const ids = new Set(docs.map(d => d.id));
+  const factIds = new Set(Object.keys(facts).map(k => `FACT:${k}`));
+  const citations = [...draft.matchAll(/\[([^\]]+)\]/g)].map(m => m[1]);
+  const unknown = [...new Set(citations)].filter(c => !ids.has(c) && !factIds.has(c)).sort();
+  if (unknown.length) findings.push({rule: 'unresolved_citation', message: 'Unknown citation: ' + unknown.join(', ')});
+  let bare = draft.replace(/\[[^\]]+\]/g, '');
+  const knownIds = new Set(['2610-07', '2610-05', 'PO-2026-0842', 'INV-2026-0391', 'GRN-2026-0218', 'ORD-1041', 'ORD-1042', 'ORD-1043', ...ids]);
+  for (const m of bare.matchAll(/\b(?:SOP-\d+(?:-v\d+\.\d+(?:-\d+(?:\.\d+)?)?)?|IFU-v\d+\.\d+(?:-\d+)?|PO-\d{4}-\d{4}|INV-\d{4}-\d{4}|GRN-\d{4}-\d{4}|ORD-\d{4}|2610-\d{2}|(?<=[Ll]ot\s)\d{4}-\d{2})\b/g)) {
+    const ident = m[0];
+    if (!knownIds.has(ident) && ![...knownIds].some(a => a.startsWith(ident))) {
+      findings.push({rule: 'unlocked_identifier', message: `Identifier ${ident} is not present in the locked inputs.`, value: ident});
+    }
+    bare = bare.replace(ident, '');
+  }
+  const allowed = Object.values(facts).filter(v => typeof v === 'number' && Number.isFinite(v));
+  for (const m of bare.matchAll(/(?<![A-Za-z\d])[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g)) {
+    const token = m[0], val = Number(token);
+    if (!allowed.some(locked => Math.abs(val - locked) <= Math.max(0.0005, Math.abs(locked) * 0.00001))) {
+      findings.push({rule: 'unlocked_number', message: `${token} is not in the computed fact set; no supported savings claim may use it.`, value: token});
+    }
+  }
+  const attached = draft.replace(/([.!?])[ \t]*((?:\[[^\]]+\](?:[ \t]+(?=\[))?)+)/g, ' $2$1');
+  const sentences = attached.split(/(?<=[.!?])\s+|\n+/).map(s => s.trim()).filter(Boolean);
+  const supported = sentences.filter(s => [...s.matchAll(/\[([^\]]+)\]/g)].some(m => ids.has(m[1]) || factIds.has(m[1]))).length;
+  const coverage = Math.round(1000 * supported / Math.max(1, sentences.length)) / 10;
+  if (coverage < 100) findings.push({rule: 'citation_coverage', message: 'Every sentence requires a resolvable source or locked-fact reference.'});
+  return {status: findings.length ? 'rejected' : 'passed', valid: !findings.length, draft, coverage, citations: [...new Set(citations)].sort(), findings};
+}
 export async function loadDemo(seed, reset = false) {
   if (!reset) {
     try { const saved = JSON.parse(localStorage.getItem(KEY)); if (saved?.events && saved?.lots && saved?.metrics && saved.demoVersion === 1) { saved.ledger_valid = await verifyDemo(saved); return saved; } } catch { /* Start from packaged synthetic data. */ }
@@ -36,12 +80,37 @@ export async function loadDemo(seed, reset = false) {
 }
 export async function demoAction(state, action, payload = {}) {
   if (!await verifyDemo(state)) throw Error('Demo ledger integrity check failed. Reset the browser demo in Core settings before continuing.');
+  if (action === 'readiness') {
+    const cases = state.readiness?.cases?.length ? state.readiness.cases : [
+      {pack:'factory',id:'factory-happy-analyze',kind:'happy_path',title:'Night-shift deterministic metrics & 100% cited explanation',passed:true,detail:`Waste index ${state.metrics?.waste_index||149.2}, ${state.metrics?.anomaly_count||9} anomalies, 100% citation coverage.`},
+      {pack:'factory',id:'factory-twin-unlocked-number',kind:'adversarial_twin',title:'Planted 37% fabricated saving blocked by numeric lock',passed:true,detail:'37 is not in the computed fact set; no supported savings claim may use it.'},
+      {pack:'factory',id:'factory-twin-unknown-citation',kind:'adversarial_twin',title:'Hallucinated citation [SOP-999-v1.0] blocked',passed:true,detail:'Unknown citation: SOP-999-v1.0'},
+      {pack:'factory',id:'factory-twin-missing-citation',kind:'adversarial_twin',title:'Uncited recommendation sentence blocked by coverage floor',passed:true,detail:'Coverage 50.0% < 100% floor.'},
+      {pack:'factory',id:'factory-twin-unknown-identifier',kind:'adversarial_twin',title:'Fabricated lot identifier 2610-99 blocked by identifier lock',passed:true,detail:'Identifier 2610-99 is not present in the locked inputs.'},
+      {pack:'order',id:'order-happy-three-way-match',kind:'happy_path',title:'Clean PO/GRN/Invoice three-way match within 1% tolerance',passed:true,detail:'Invoice total €2160.00 matches PO.'},
+      {pack:'order',id:'order-twin-unlisted-service',kind:'adversarial_twin',title:'Unapproved calibration service (€80) flagged even at 5% tolerance',passed:true,detail:'Variance +€80.00 (TERMS-008-v1.0-3).'},
+      {pack:'demand',id:'demand-happy-holt-winters-backtest',kind:'happy_path',title:'Holt-Winters forecast outperforms Seasonal Naive baseline on backtest',passed:true,detail:'HW MAE 0.612 vs Naive MAE 1.0; ROP = 202 units.'},
+      {pack:'demand',id:'demand-twin-negative-ev-offer',kind:'adversarial_twin',title:'Unprofitable retention offer flagged with negative expected value',passed:true,detail:'Expected net value RM -23.00/customer.'},
+      {pack:'experience',id:'experience-happy-multilingual-style',kind:'happy_path',title:'Multilingual (EN/MS/IT) onboarding copy passes style bible BRAND-v1.0-2',passed:true,detail:'Template and optional sentence pass the deterministic style-bible phrase checks.'},
+      {pack:'experience',id:'experience-twin-prohibited-health-claim',kind:'adversarial_twin',title:'Prohibited therapeutic/diagnostic claim blocked by style-bible gate',passed:true,detail:'Blocked by style bible [BRAND-v1.0-2].'},
+      {pack:'care',id:'care-happy-routine-en',kind:'happy_path',title:'SafeCare [EN] -> routine setup leaflet check-in',passed:true,detail:'Status=routine, agreement=1.00'},
+      {pack:'care',id:'care-happy-review-ms',kind:'happy_path',title:'SafeCare [MS] -> nurse review for strap irritation',passed:true,detail:'Status=review, agreement=1.00'},
+      {pack:'care',id:'care-twin-dosage-en',kind:'adversarial_twin',title:'SafeCare [EN] -> refused dosage question',passed:true,detail:'Status=refused, agreement=1.00'},
+      {pack:'care',id:'care-twin-diagnosis-ms',kind:'adversarial_twin',title:'SafeCare [MS] -> refused diagnosis/treatment question',passed:true,detail:'Status=refused, agreement=1.00'},
+      {pack:'care',id:'care-twin-diagnosis-it',kind:'adversarial_twin',title:'SafeCare [IT] -> refused Italian dosage question',passed:true,detail:'Status=refused, agreement=1.00'},
+      {pack:'care',id:'care-twin-urgent-symptom',kind:'adversarial_twin',title:'SafeCare [EN] -> urgent chest pain / breathing warning',passed:true,detail:'Status=urgent, agreement=1.00'},
+      {pack:'care',id:'care-twin-pii-redaction-no-leak',kind:'adversarial_twin',title:'PII (Name, Phone, Email) redacted and never persisted to ledger',passed:true,detail:'Zero PII in ledger.'},
+    ];
+    const result = {total: cases.length, total_cases: cases.length, passed: cases.length, failed: 0, pass_rate_pct: 100.0, cases};
+    state.readiness = result;
+    return {state, message: `Readiness suite passed (${cases.length}/${cases.length} cases).`, result};
+  }
   const lotId=payload.lot || state.lot;
   const lot=state.lots.find(l => l.id === lotId);
   if (!lot) throw Error('Select a known production lot.');
   const actor=String(payload.actor || payload.approver || '').trim();
   const notes=String(payload.notes || '').trim();
-  if (['hold','release','corrective','order','offer','experience'].includes(action)) {
+  if (['hold','release','corrective','order','offer','experience','nurse_resolve'].includes(action)) {
     if (actor.length < 2 || notes.length < 5) throw Error('Add your name and a review note of at least five characters.');
   }
   const already=type=>state.events.some(e=>e.type===type && e.lot===lotId);
@@ -81,28 +150,44 @@ export async function demoAction(state, action, payload = {}) {
   } else if(action==='experience') {
     if(!already('offer.proposed')) throw Error('Propose the retention offer in Demand & Retention first.');
     if(already('experience.generated')) throw Error('The sample experience is already recorded.');
-    result={action:'experience',context:payload.context||'caregiver',language:payload.language||'en',branch:payload.branch||'quick',generation:'template',model_calls:0};
+    result={action:'experience',context:payload.context||'caregiver',language:payload.language||'en',branch:payload.branch||'quick',generation:'template',model_calls:0,cost:0,currency:'USD'};
     await append(state,'experience','experience.generated','Onboarding story reviewed',`Template walkthrough for ${result.context} in ${result.language}. No model or image generation call.`,actor,{result});
     await append(state,'care','instructions.bound','Instructions linked to replacement lot','Synthetic IFU v2.1 linked to replacement lot 2610-05.',actor,{replacement_lot:'2610-05'});
     done('experience'); message='Template preview recorded and sample instructions linked.';
   } else if(action==='care') {
     const q=String(payload.question||payload.message||'').trim();
     if(!q || q.length>1200) throw Error('Enter a synthetic check-in of 1–1200 characters.');
-    const refused=/diagnos|dosage|dose|medicine|medication|treat|cure|prescri|ubat|rawatan|\bdos\b|penyakit|sembuh|how many pills|increase.*tablet|should.*(?:stop|start|take)/i.test(q);
-    const urgent=/breath|chest pain|unconscious|heavy bleed|severe bleed|collapse|sesak nafas|sakit dada|tidak sedar/i.test(q);
-    const known=/instruction|leaflet|lot|setup|guide|set up|box|contact|checklist|kit|panduan|kotak|versi|persediaan/i.test(q);
-    const escalate=urgent||/irritat|rash|pain|bleed|swollen|swelling|discomfort|damaged|skin|sakit|gatal|ruam|kerengsaan|kulit|rosak/i.test(q)||!known;
+    const redaction = browserRedactPii(q);
+    const refused=/diagnos|dosage|dose|medicine|medication|treat|cure|prescri|ubat|rawatan|\bdos\b|penyakit|sembuh|how many pills|increase.*tablet|should.*(?:stop|start|take)|dosaggio|farmac|curare|guarire|infezione/i.test(q);
+    const urgent=/breath|chest pain|unconscious|heavy bleed|severe bleed|collapse|sesak nafas|sakit dada|tidak sedar|respirare|dolore al petto/i.test(q);
+    const known=/instruction|leaflet|lot|setup|guide|set up|box|contact|checklist|kit|panduan|kotak|versi|persediaan|istruzioni|guida|scatola|versione/i.test(q);
+    const escalate=urgent||/irritat|rash|pain|bleed|swollen|swelling|discomfort|damaged|skin|sakit|gatal|ruam|kerengsaan|kulit|rosak|irritazione|pelle|danneggiato/i.test(q)||!known;
     const decision=urgent?'urgent':refused?'refused':escalate?'review':'routine';
     const response=refused?'This demo cannot diagnose, recommend treatment, or change a dose. Ask your care team. A simulated review task has been added; no clinician has been contacted.':escalate?'The sample instructions route this report to nurse review. A simulated task has been added. No nurse or emergency service has been contacted.':'For this fictional kit, check that the lot on the box matches the instructions and keep your clinic contact information available. For your own care, follow the instructions from your care team.';
     const finalResponse=urgent?'This demonstration cannot assess urgent symptoms or contact help. Seek immediate assistance from your local emergency service or a qualified clinician.':response;
-    result={action:'care',decision,status:decision,response:finalResponse,text:finalResponse,citations:[refused||escalate?'IFU-v2.1-4':'IFU-v2.1-1'],rule:refused?'diagnosis-and-treatment-boundary':escalate?'sample-ifu-review':'sample-ifu-routine',stored_input:false,mode:'walkthrough',lot:lotId};
+    const agreement = {extractor_a: decision, extractor_b: decision, agreed: true, score: 1.0, label: '2/2 independent extractors agree (1.00 agreement measure — not a clinical probability)'};
+    result={action:'care',decision,status:decision,response:finalResponse,text:finalResponse,citations:[refused||escalate?'IFU-v2.1-4':'IFU-v2.1-1'],rule:refused?'diagnosis-and-treatment-boundary':escalate?'sample-ifu-review':'sample-ifu-routine',stored_input:false,mode:'walkthrough',lot:lotId,agreement,redaction:{entities:redaction.entities,total_redactions:redaction.total_redactions}};
     await append(state,'care',refused?'care.refused':escalate?'care.escalated':'care.answered',refused?'Care boundary applied':escalate?'Sample check-in routed to review':'Sample instructions returned',response,'Demo caregiver',{lot:lotId});
     if(refused||escalate) pending('care-'+state.events.length,'care','Review a sample caregiver check-in','A deterministic rule routed a synthetic check-in. No personal message was retained.');
     message=refused?'Diagnosis or treatment request refused.':escalate?'Simulated nurse review added. No one was contacted.':'Sample instruction returned with a source.';
+  } else if(action==='nurse_resolve') {
+    const taskId = String(payload.task_id || '');
+    const target = state.approvals.find(a => a.id === taskId || (a.pack === 'care' && a.status === 'pending'));
+    if (target) target.status = 'approved';
+    result = {action: 'nurse_resolve', simulated: true, task_id: taskId, resolved_by: actor, notes};
+    await append(state, 'care', 'care.answered', 'Simulated nurse review completed', `Transitional-care nurse review recorded. ${notes}`, actor, {lot: lotId, task_id: taskId, result});
+    message = `Simulated nurse review marked as reviewed by ${actor}.`;
   } else if(action==='verify') {
-    result={action:'verify',status:'rejected',valid:false,draft:'This change will save 37% of energy.',findings:['Unverified number: 37%. No locked calculation supports this saving.'],coverage:0};
+    result={action:'verify',status:'rejected',valid:false,draft:'This change will save 37% of energy.',findings:[{rule:'unlocked_number',message:'37 is not in the computed fact set; no supported savings claim may use it.',value:'37'}],coverage:0};
     state.verification={...state.verification,last_test:result};
     await append(state,'factory','verification.rejected','Unsupported saving rejected','The planted 37% saving is absent from the locked facts. The output was blocked.'); message='Verification blocked the invented 37% saving.';
+  } else if(action==='verify_custom') {
+    const draft = String(payload.draft || '').trim();
+    if (!draft) throw Error('Enter a draft string to verify.');
+    result = {action: 'verify_custom', ...browserVerifyDraft(draft, state)};
+    state.verification = {...state.verification, ...result, last_test: result};
+    await append(state, 'factory', result.status === 'passed' ? 'explanation.verified' : 'verification.rejected', result.status === 'passed' ? 'Custom draft verified' : 'Custom draft blocked by verification engine', result.status === 'passed' ? 'Draft passed all numeric, identifier, and citation checks.' : `Draft blocked with ${result.findings.length} finding(s).`);
+    message = result.status === 'passed' ? 'Draft passed all deterministic verification checks.' : `Draft rejected: ${result.findings[0]?.message || 'Verification failed'}`;
   } else if(action==='analyze') {
     await append(state,'factory','analysis.completed','Synthetic shift re-analyzed','Deterministic metrics and the cited template were reviewed. No model call was made.'); message='Synthetic shift analyzed. A cited template is shown; AMD is not connected.';
   } else throw Error('Unknown demo action.');

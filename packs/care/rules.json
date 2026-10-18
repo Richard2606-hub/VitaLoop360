@@ -1,0 +1,36 @@
+{
+  "pack": "care",
+  "coverage_floor": 100.0,
+  "redaction_policy": "always_redact_pii_never_persist_raw_checkin",
+  "redaction_entities": [
+    "PERSON",
+    "PHONE",
+    "EMAIL",
+    "ID",
+    "ADDRESS"
+  ],
+  "refusal_rules": [
+    {
+      "id": "no_diagnosis_dosage_treatment",
+      "description": "Deterministically refuse all diagnosis, dosage, medication, and treatment questions in English, Bahasa Melayu, and Italian before any model call."
+    }
+  ],
+  "escalation_rules": [
+    {
+      "id": "urgent_symptom_boundary",
+      "trigger": "status == 'urgent'",
+      "assignee_role": "Emergency / Qualified Clinician"
+    },
+    {
+      "id": "skin_irritation_or_device_damage",
+      "trigger": "status == 'review'",
+      "assignee_role": "Transitional-Care Nurse",
+      "citation": "IFU-v2.1-4"
+    },
+    {
+      "id": "out_of_scope_question",
+      "trigger": "status == 'out_of_scope'",
+      "assignee_role": "Transitional-Care Nurse"
+    }
+  ]
+}

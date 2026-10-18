@@ -1,5 +1,7 @@
-"""Authored, fictional fixtures. These are not imported public or plant data."""
+"""Authored, fictional fixtures and pack-folder discovery. These are not imported public or plant data."""
+import json
 import math
+from pathlib import Path
 
 LOT = "2610-07"
 BASELINE = {"energy_per_unit": 0.42, "scrap_rate": 2.1, "idle_share": 12.0, "reactive_ratio": 0.12}
@@ -24,6 +26,79 @@ PACKS = [
     {"id": "care", "name": "SafeCare Navigator", "status": "walkthrough", "version": "0.1.0", "track": "Health and Wellbeing", "subscriptions": ["experience.generated"], "publishes": ["instructions.bound", "care.escalated", "care.refused", "care.answered"], "capabilities": ["simulation"]},
 ]
 
+ORDER_DOCUMENTS = [
+    {
+        "id": "CERT-2610-07",
+        "kind": "Quality Certificate",
+        "language": "English / Bahasa Melayu",
+        "lot": "2610-07",
+        "issuer": "Penang QA Lab · SMT-04",
+        "status": "Hold pending thermal-profile sign-off",
+        "excerpt_en": "Batch 2610-07 (1,200 units) flagged for reflow profile verification after heating-element HE-004 replacement [SOP-017-v3.2-4.2].",
+        "excerpt_local": "Lot 2610-07 ditahan sementara menunggu pengesahan profil terma ketuhar aliran semula selepas penggantian elemen pemanas HE-004.",
+    },
+    {
+        "id": "PO-2026-0842",
+        "kind": "Purchase Order",
+        "language": "Italiano / English",
+        "supplier": "Nova Components S.r.l. · Milano",
+        "currency": "EUR",
+        "approved_total": 2160.00,
+        "lines": [{"sku": "HE-004", "description": "Elemento riscaldante / Reflow Heating Element", "qty": 12, "unit_price": 180.00, "total": 2160.00}],
+        "excerpt_en": "Approved purchase order for 12 × HE-004 heating elements at €180.00/unit (€2,160.00 total). No field calibration service ordered.",
+        "excerpt_local": "Ordine d'acquisto approvato per 12 × elementi riscaldanti HE-004 a €180,00/unità (totale €2.160,00). Nessun servizio di calibrazione incluso.",
+    },
+    {
+        "id": "INV-2026-0391",
+        "kind": "Supplier Invoice",
+        "language": "Italiano / English",
+        "supplier": "Nova Components S.r.l. · Milano",
+        "currency": "EUR",
+        "billed_total": 2240.00,
+        "lines": [
+            {"sku": "HE-004", "description": "Elemento riscaldante / Reflow Heating Element", "qty": 12, "unit_price": 180.00, "total": 2160.00},
+            {"sku": "SVC-CAL", "description": "Servizio di calibrazione / Unlisted Calibration Service", "qty": 1, "unit_price": 80.00, "total": 80.00},
+        ],
+        "excerpt_en": "Bills 12 × HE-004 (€2,160.00) plus 1 × unlisted calibration service (€80.00). Triggers clause [TERMS-008-v1.0-3].",
+        "excerpt_local": "Fattura per 12 × HE-004 (€2.160,00) più 1 × servizio di calibrazione non autorizzato (€80,00).",
+    },
+    {
+        "id": "GRN-2026-0218",
+        "kind": "Goods Receipt Note",
+        "language": "Bahasa Melayu / English",
+        "location": "Penang Receiving Dock · SMT-04",
+        "received_qty": 12,
+        "service_received_qty": 0,
+        "excerpt_en": "Physical receipt confirmed for 12 × HE-004 units. Zero external service receipts logged.",
+        "excerpt_local": "Penerimaan fizikal disahkan untuk 12 unit HE-004. Tiada rekod penerimaan perkhidmatan luar.",
+    },
+]
+
+# 21-day synthetic daily demand with 7-day weekly seasonality (for Holt-Winters vs Seasonal Naive backtest)
+HISTORICAL_DEMAND = [
+    15, 17, 20, 21, 19, 17, 15,
+    14, 16, 19, 21, 18, 17, 15,
+    16, 18, 21, 22, 19, 18, 16,
+]
+
+CUSTOMER_COHORTS = [
+    {"id": "COH-KL-REPL", "name": "Delayed replacement customers (Kuala Lumpur)", "customers": 24, "recency_days": 9, "frequency": 2.4, "monetary_rm": 420.0, "delay_days": 7, "rfm_score": "4-4-5", "segment": "High-Value At-Risk"},
+    {"id": "COH-MI-REPL", "name": "Clinic follow-up kit orders (Milan)", "customers": 18, "recency_days": 14, "frequency": 3.1, "monetary_rm": 510.0, "delay_days": 4, "rfm_score": "4-5-5", "segment": "Loyal Repeat"},
+    {"id": "COH-KL-FIRST", "name": "First-time pharmacy buyers (Kuala Lumpur)", "customers": 62, "recency_days": 22, "frequency": 1.0, "monetary_rm": 260.0, "delay_days": 0, "rfm_score": "3-1-3", "segment": "Standard Onboarding"},
+]
+
+STYLE_BIBLE = {
+    "version": "1.0",
+    "document_id": "BRAND-v1.0-2",
+    "voice": "Calm, practical, transparent, non-clinical",
+    "palette": ["#d9e7de", "#31554b", "#f3ede2", "#c8b2a0"],
+    "audiences": ["caregiver", "active"],
+    "languages": ["en", "ms", "it"],
+    "branches": ["quick", "detailed"],
+    "payer": "Brand Experience & Customer Retention Budget",
+    "unit_economics_note": "Deterministic template studio: $0.00 API spend in offline mode; metered per token when connected to an OpenAI-compatible endpoint.",
+}
+
 
 def telemetry():
     """32 deterministic fifteen-minute windows; the incident begins at 02:15."""
@@ -32,5 +107,53 @@ def telemetry():
         good = 93 + (i * 7 % 17)
         incident = 9 <= i <= 17
         energy = good * (0.425 + 0.013 * math.sin(i * 1.3) + (0.205 if incident else 0.0))
-        rows.append({"time": f"{i // 4:02d}:{(i % 4) * 15:02d}", "energy": round(energy, 2), "good_units": good, "scrap": (8 + i % 3) if incident else (2 + i % 2), "idle_energy": round(energy * (0.27 if incident else 0.115 + 0.01 * (i % 3)), 2), "reactive_kvarh": round(energy * (0.22 if incident else 0.115), 2)})
+        rows.append({
+            "time": f"{i // 4:02d}:{(i % 4) * 15:02d}",
+            "energy": round(energy, 2),
+            "good_units": good,
+            "scrap": (8 + i % 3) if incident else (2 + i % 2),
+            "idle_energy": round(energy * (0.27 if incident else 0.115 + 0.01 * (i % 3)), 2),
+            "reactive_kvarh": round(energy * (0.22 if incident else 0.115), 2),
+        })
     return rows
+
+
+def discover_pack_folders(packs_root=None):
+    """Inspect installable pack folders under packs/ and return validated metadata."""
+    if packs_root is None:
+        packs_root = Path(__file__).resolve().parents[1] / "packs"
+    else:
+        packs_root = Path(packs_root)
+    if not packs_root.exists():
+        return []
+    order = {"factory": 0, "order": 1, "demand": 2, "experience": 3, "care": 4}
+    discovered = []
+    for folder in sorted(packs_root.iterdir(), key=lambda p: (order.get(p.name, 99), p.name)):
+        if not folder.is_dir():
+            continue
+        manifest_path = folder / "manifest.json"
+        if not manifest_path.exists():
+            discovered.append({"id": folder.name, "name": folder.name, "status": "quarantined", "reason": "Missing manifest.json in pack folder."})
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            rules_path = folder / "rules.json"
+            readiness_path = folder / "readiness" / "cases.json"
+            schemas_dir = folder / "schemas"
+            prompts_dir = folder / "prompts"
+            docs_dir = folder / "docs"
+            manifest["folder"] = str(folder.name)
+            manifest["has_rules"] = rules_path.is_file()
+            manifest["has_readiness"] = readiness_path.is_file()
+            manifest["schemas"] = sorted(p.name for p in schemas_dir.glob("*.json")) if schemas_dir.is_dir() else []
+            manifest["prompts"] = sorted(p.name for p in prompts_dir.glob("*.txt")) if prompts_dir.is_dir() else []
+            manifest["doc_files"] = sorted(p.name for p in docs_dir.glob("*.md")) if docs_dir.is_dir() else []
+            if readiness_path.is_file():
+                cases_payload = json.loads(readiness_path.read_text(encoding="utf-8"))
+                manifest["readiness_cases"] = cases_payload.get("cases", [])
+            if rules_path.is_file():
+                manifest["rules"] = json.loads(rules_path.read_text(encoding="utf-8"))
+            discovered.append(manifest)
+        except (OSError, ValueError, TypeError) as exc:
+            discovered.append({"id": folder.name, "name": folder.name, "status": "quarantined", "reason": f"Malformed pack folder artefact: {exc}"})
+    return discovered

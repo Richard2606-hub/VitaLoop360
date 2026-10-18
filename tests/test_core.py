@@ -9,13 +9,20 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
-from backend.calculations import calculate, isolation_scores
-from backend.data import DOCUMENTS, LOT, telemetry
+from backend.calculations import (
+    calculate,
+    demand_and_retention_analytics,
+    holt_winters_forecast,
+    isolation_scores,
+    three_way_match_calc,
+    weibull_survival_churn,
+)
+from backend.data import CUSTOMER_COHORTS, DOCUMENTS, HISTORICAL_DEMAND, LOT, ORDER_DOCUMENTS, discover_pack_folders, telemetry
 from backend.gateway import Gateway, GatewayError
 from backend.ledger import Ledger, LedgerIntegrityError, digest
-from backend.runtime import ActionError, Runtime
+from backend.runtime import ActionError, Runtime, generate_metrics_report, run_readiness_suite
 from backend.server import make_handler
-from backend.verification import care_guard, retrieve, verify
+from backend.verification import care_agreement, care_guard, experience_quality_gate, redact_pii, retrieve, verify
 
 
 class CoreTests(unittest.TestCase):
@@ -60,13 +67,29 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(response["result"]["status"], "rejected")
         self.assertTrue(any(f["rule"] == "unlocked_number" and f["value"] == "37" for f in response["result"]["findings"]))
 
-    def test_verifier_handles_signed_numbers_and_citations(self):
+    def test_verifier_handles_signed_numbers_citations_and_identifiers(self):
         facts = {"cost": 98.06}
         self.assertEqual(verify("Estimated cost is 98.06. [FACT:cost]", facts, [])["status"], "passed")
         self.assertEqual(verify("Estimated cost is -98.06 [FACT:cost].", facts, [])["status"], "rejected")
         self.assertEqual(verify("Estimated cost is 98.06 [FAKE:cost].", facts, [])["status"], "rejected")
         self.assertEqual(verify("Estimated cost is 98.06.", facts, [])["status"], "rejected")
         self.assertEqual(verify("Estimated cost is 9.806e1 [FACT:cost].", facts, [])["status"], "passed")
+        # Identifier locking test (fabricated lot ID 9999-88 rejected when known_identifiers locked)
+        locked_ids = {"2610-07", "SOP-017-v3.2-4.2"}
+        doc = [{"id": "SOP-017-v3.2-4.2"}]
+        res_fake_lot = verify("Lot 9999-88 cost is 98.06. [SOP-017-v3.2-4.2]", facts, doc, known_identifiers=locked_ids)
+        self.assertEqual(res_fake_lot["status"], "rejected")
+        self.assertTrue(any(f["rule"] == "unlocked_identifier" and f["value"] == "9999-88" for f in res_fake_lot["findings"]))
+        res_valid_lot = verify("Lot 2610-07 cost is 98.06. [SOP-017-v3.2-4.2]", facts, doc, known_identifiers=locked_ids)
+        self.assertEqual(res_valid_lot["status"], "passed")
+
+    def test_custom_verify_action(self):
+        res = self.act("verify_custom", draft="Lot 9999-88 had 37% savings per [SOP-999-v1.0].")
+        self.assertEqual(res["result"]["status"], "rejected")
+        rules = {f["rule"] for f in res["result"]["findings"]}
+        self.assertIn("unlocked_number", rules)
+        self.assertIn("unresolved_citation", rules)
+        self.assertIn("unlocked_identifier", rules)
 
     def test_hold_requires_named_person_and_reason(self):
         for data in ({"action": "hold"}, {"action": "hold", "actor": "System", "notes": "Reviewed evidence"}, {"action": "hold", "actor": "Aisha", "notes": "ok"}):
@@ -123,12 +146,69 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(self.runtime.ledger.verify())
         self.act("verify")  # A care response must not mutate the prior hashed record.
 
-    def test_malay_care_rules_and_unknown_questions(self):
+    def test_multilingual_care_rules_and_dual_extractor_agreement(self):
         self.assertEqual(care_guard("Berapa dos ubat?")[0], "refused")
         self.assertEqual(care_guard("Kerengsaan kulit pada tali")[0], "review")
         self.assertEqual(care_guard("Sesak nafas")[0], "urgent")
         self.assertEqual(care_guard("Di mana panduan persediaan?")[0], "routine")
+        self.assertEqual(care_guard("Quale dose di farmaco devo prendere?")[0], "refused")
+        self.assertEqual(care_guard("Dolore al petto e febbre alta")[0], "urgent")
+        self.assertEqual(care_guard("Irritazione cutanea sotto il cinturino")[0], "review")
+        self.assertEqual(care_guard("Dove trovo la guida rapida e la ricarica?")[0], "routine")
         self.assertEqual(care_guard("An unrelated uncovered question")[0], "out_of_scope")
+        # Dual-extractor agreement check
+        agree_clear = care_agreement("The strap causes skin irritation and redness")
+        self.assertEqual(agree_clear["score"], 1.0)
+        self.assertEqual(agree_clear["extractor_a"], "review")
+        self.assertTrue(agree_clear["agreed"])
+
+    def test_pii_redaction_and_nurse_review_resolution(self):
+        sample = "Patient Jane Doe, email jane@example.com, phone +60 12-345 6789, IC 880505-10-5432 at 14 Jalan Ampang has skin irritation."
+        redacted = redact_pii(sample)
+        self.assertNotIn("Jane", redacted["redacted_text"])
+        self.assertNotIn("jane@example.com", redacted["redacted_text"])
+        self.assertNotIn("345 6789", redacted["redacted_text"])
+        self.assertNotIn("880505-10-5432", redacted["redacted_text"])
+        self.assertNotIn("Jalan Ampang", redacted["redacted_text"])
+        self.assertGreaterEqual(redacted["total_redactions"], 4)
+        # Create simulated nurse task via care action and resolve it
+        care_res = self.runtime.action({"action": "care", "question": sample})
+        pending_care = [a for a in self.runtime.state()["approvals"] if a["pack"] == "care" and a["status"] == "pending"]
+        self.assertGreaterEqual(len(pending_care), 1)
+        task_id = pending_care[-1]["id"]
+        resolved = self.act("nurse_resolve", task_id=task_id, actor="Nurse Farah", notes="Confirmed IFU v2.1 §3.2 guidance with caregiver.")
+        self.assertTrue(resolved["result"]["simulated"])
+        self.assertTrue(any(a["id"] == task_id and a["status"] == "approved" for a in self.runtime.state()["approvals"]))
+
+    def test_holt_winters_and_weibull_survival_mathematics(self):
+        hw = holt_winters_forecast(HISTORICAL_DEMAND, horizon=7)
+        self.assertEqual(len(hw["forecast"]), 7)
+        self.assertTrue(all(v > 0 for v in hw["forecast"]))
+        self.assertIn("holt_winters", hw["backtest"])
+        self.assertIn("seasonal_naive", hw["backtest"])
+        self.assertLessEqual(hw["backtest"]["holt_winters"]["mae"], hw["backtest"]["seasonal_naive"]["mae"])
+        wb_short = weibull_survival_churn(delay_days=2)
+        wb_long = weibull_survival_churn(delay_days=12)
+        self.assertGreater(wb_long["churn_probability"], wb_short["churn_probability"])
+        self.assertLess(wb_long["survival_probability"], wb_short["survival_probability"])
+        analytics = demand_and_retention_analytics()
+        self.assertEqual(len(analytics["rfm_cohorts"]), len(CUSTOMER_COHORTS))
+        by_id = {c["id"]: c for c in analytics["rfm_cohorts"]}
+        self.assertGreater(by_id["COH-KL-REPL"]["weibull_churn"], by_id["COH-MI-REPL"]["weibull_churn"])
+
+    def test_three_way_match_and_experience_quality_gate(self):
+        matched = three_way_match_calc({"quantity": 12, "unitPrice": 180.0, "receivedQuantity": 12, "serviceQuantity": 0, "serviceUnitPrice": 80.0})
+        self.assertTrue(matched["matched"])
+        self.assertEqual(matched["invoice_total"], 2160.0)
+        disputed = three_way_match_calc({"quantity": 12, "unitPrice": 180.0, "receivedQuantity": 12, "serviceQuantity": 1, "serviceUnitPrice": 80.0})
+        self.assertFalse(disputed["matched"])
+        self.assertEqual(disputed["variance"], 80.0)
+        self.assertEqual(len(ORDER_DOCUMENTS), 4)
+        # Experience quality gate blocks clinical/diagnostic claims across EN/BM/IT
+        self.assertFalse(experience_quality_gate("This band cures arrhythmia and diagnoses disease.")["passed"])
+        self.assertFalse(experience_quality_gate("Alat ini menyembuhkan penyakit jantung.")["passed"])
+        self.assertFalse(experience_quality_gate("Questo dispositivo offre una guarigione clinica.")["passed"])
+        self.assertTrue(experience_quality_gate("Charge the band until the green light stays steady.")["passed"])
 
     def test_invoice_calculation_and_experience_selection(self):
         self.act("hold")
@@ -142,8 +222,56 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(result["invoice_total"], 2160)
         self.assertEqual(result["allocated_units"], 100)
         self.act("offer")
-        selected = self.act("experience", context="active", language="ms", branch="detailed")["result"]
-        self.assertEqual((selected["context"], selected["language"], selected["branch"]), ("active", "ms", "detailed"))
+        selected = self.act("experience", context="active", language="it", branch="detailed")["result"]
+        self.assertEqual((selected["context"], selected["language"], selected["branch"]), ("active", "it", "detailed"))
+        self.assertTrue(selected["quality_gate"]["passed"])
+
+    def test_pack_folder_discovery_and_readiness_suite(self):
+        packs = discover_pack_folders()
+        self.assertEqual({p["id"] for p in packs}, {"factory", "order", "demand", "experience", "care"})
+        for info in packs:
+            with self.subTest(pack=info["id"]):
+                self.assertIn(info["status"], {"ready", "walkthrough"})
+                self.assertGreaterEqual(len(info["readiness_cases"]), 2)
+        suite = run_readiness_suite()
+        self.assertEqual(suite["failed"], 0)
+        self.assertEqual(suite["pass_rate_pct"], 100.0)
+        self.assertGreaterEqual(suite["total"], 18)
+
+    def test_replay_only_mode_and_materialised_ledger_views(self):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as folder:
+            path = Path(folder) / "replay.jsonl"
+            writer = Runtime(path, env={})
+            writer.action({"action": "hold", "actor": "Aisha Rahman", "notes": "Reviewed incident evidence."})
+            replayer = Runtime(path, env={}, replay_only=True)
+            self.assertTrue(replayer.state()["replay_only"])
+            self.assertEqual(replayer.state()["lots"][0]["status"], "held")
+            with self.assertRaises(ActionError):
+                replayer.action({"action": "analyze"})
+            views = replayer.ledger.views()
+            self.assertIn("cost_view", views)
+            self.assertIn("verification_view", views)
+            self.assertIn("guard_view", views)
+            self.assertIn("approvals_view", views)
+            self.assertIn("lot_view", views)
+            self.assertTrue(any(e["type"] == "lot.held" for e in views["lot_view"]["2610-07"]))
+
+    def test_concurrent_actions_preserve_hash_chain(self):
+        errors = []
+
+        def worker(idx):
+            try:
+                self.runtime.action({"action": "care", "question": f"Where is the setup guide ({idx})?"})
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+        self.assertTrue(self.runtime.ledger.verify())
 
     def test_retrieval_respects_pack_and_version(self):
         self.assertTrue(all(d["pack"] == "factory" for d in retrieve(DOCUMENTS, "instructions skin", "factory")))
@@ -227,6 +355,13 @@ class HTTPTests(unittest.TestCase):
             try:
                 with urllib.request.urlopen(base + "/api/state") as response:
                     self.assertEqual(json.load(response)["mode"], "demo")
+                with urllib.request.urlopen(base + "/api/readiness") as response:
+                    readiness = json.load(response)
+                    self.assertEqual(readiness["failed"], 0)
+                with urllib.request.urlopen(base + "/api/metrics") as response:
+                    metrics = json.load(response)
+                    self.assertIn("hero_pack_domain_metrics", metrics)
+                    self.assertIn("readiness_pass_rate", metrics)
                 for path, body, content_type, expected in [("/api/action", b'{"action":"hold"}', "application/json", 400), ("/api/action", b"{", "application/json", 400), ("/api/action", b"{}", "text/plain", 415), ("/api/missing", b"{}", "application/json", 404)]:
                     request = urllib.request.Request(base + path, data=body, headers={"Content-Type": content_type})
                     with self.subTest(path=path, body=body), self.assertRaises(urllib.error.HTTPError) as caught:

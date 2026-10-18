@@ -1,0 +1,1 @@
+Summarize the deterministic three-way match finding between purchase order PO-2026-0842, goods receipt GRN-2026-0218, and supplier invoice INV-2026-0391. Cite [TERMS-008-v1.0-3] and use only locked figures.

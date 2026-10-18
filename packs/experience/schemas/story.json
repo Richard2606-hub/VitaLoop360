@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdaptiveUnboxingExperience",
+  "type": "object",
+  "required": ["context", "language", "branch", "cost", "currency"],
+  "properties": {
+    "context": {"type": "string", "enum": ["caregiver", "active"]},
+    "language": {"type": "string", "enum": ["en", "ms", "it"]},
+    "branch": {"type": "string", "enum": ["quick", "detailed"]},
+    "cost": {"type": "number"},
+    "currency": {"type": "string"}
+  }
+}

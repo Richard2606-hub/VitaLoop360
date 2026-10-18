@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DemandRetentionResult",
+  "type": "object",
+  "required": ["safety_stock", "reorder_point", "expected_value"],
+  "properties": {
+    "safety_stock": {"type": "number"},
+    "reorder_point": {"type": "integer"},
+    "expected_value": {"type": "number"}
+  }
+}

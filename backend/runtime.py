@@ -1,15 +1,41 @@
-"""Shared core, manifest-validated subscriptions, approvals and lot projections."""
+"""Shared core, manifest-validated subscriptions, approvals, lot projections, readiness, and metrics."""
 import copy
 import json
 import math
 import re
 import threading
+from pathlib import Path
 
-from .calculations import FORMULAS, calculate
-from .data import BASELINE, DOCUMENTS, LOT, LOTS, PACKS, telemetry
+from .calculations import (
+    FORMULAS,
+    calculate,
+    demand_and_retention_analytics,
+    holt_winters_forecast,
+    three_way_match_calc,
+    weibull_survival_churn,
+)
+from .data import (
+    BASELINE,
+    CUSTOMER_COHORTS,
+    DOCUMENTS,
+    LOT,
+    LOTS,
+    ORDER_DOCUMENTS,
+    PACKS,
+    STYLE_BIBLE,
+    discover_pack_folders,
+    telemetry,
+)
 from .gateway import Gateway, GatewayError
 from .ledger import Ledger
-from .verification import care_guard, retrieve, verify
+from .verification import (
+    care_agreement,
+    care_guard,
+    experience_quality_gate,
+    redact_pii,
+    retrieve,
+    verify,
+)
 
 
 class ActionError(ValueError):
@@ -19,19 +45,44 @@ class ActionError(ValueError):
 
 
 class Runtime:
-    def __init__(self, ledger_path=None, env=None):
+    def __init__(self, ledger_path=None, env=None, replay_only=False):
         self.lock = threading.RLock()
+        self.replay_only = bool(replay_only)
         self.ledger = Ledger(ledger_path)
         self.metrics, self.telemetry = calculate(telemetry())
-        self.packs = self._load_packs(PACKS)
-        self.gateway = Gateway(env=env, on_call=self._record_call)
+        self.packs = self._load_packs(PACKS, discover_pack_folders())
+        self.gateway = Gateway(env={} if replay_only else env, on_call=self._record_call)
         self.verification = None
-        self.explanation = {"text": self._demo_explanation(), "citations": ["FACT:energy_per_unit", "FACT:energy_delta", "SOP-017-v3.2-4.2", "SOP-024-v1.4-2.1"], "source": "Deterministic synthetic demo"}
+        self.explanation = {
+            "text": self._demo_explanation(),
+            "citations": ["FACT:energy_per_unit", "FACT:energy_delta", "SOP-017-v3.2-4.2", "SOP-024-v1.4-2.1"],
+            "source": "Deterministic synthetic demo",
+        }
         self.verification = verify(self.explanation["text"], self.metrics, DOCUMENTS)
-        if not self.ledger.records:
-            self.ledger.append(pack="core", type="runtime.ready", lot=LOT, title="Shared core ready", detail="Fictional Lumora Wellness reference scenario. Authored telemetry; no AMD call has been made. Four packs are simulated walkthroughs.")
-            self.ledger.append(pack="factory", type="telemetry.loaded", lot=LOT, title="Night-shift telemetry loaded", detail=f"{len(self.telemetry)} authored fifteen-minute windows; metrics calculated deterministically.", metrics=self.metrics)
-            self.ledger.append(pack="factory", type="anomaly.flagged", lot=LOT, title="Energy and scrap anomaly detected", detail=f"{self.metrics['anomaly_count']} flagged windows; profile drift is an unconfirmed hypothesis. Supervisor review required.", metrics=self.metrics)
+        if not self.ledger.records and not self.replay_only:
+            self.ledger.append(
+                pack="core",
+                type="runtime.ready",
+                lot=LOT,
+                title="Shared core ready",
+                detail="Fictional Lumora Wellness reference scenario. Authored telemetry; no AMD call has been made. Four packs are simulated walkthroughs.",
+            )
+            self.ledger.append(
+                pack="factory",
+                type="telemetry.loaded",
+                lot=LOT,
+                title="Night-shift telemetry loaded",
+                detail=f"{len(self.telemetry)} authored fifteen-minute windows; metrics calculated deterministically.",
+                metrics=self.metrics,
+            )
+            self.ledger.append(
+                pack="factory",
+                type="anomaly.flagged",
+                lot=LOT,
+                title="Energy and scrap anomaly detected",
+                detail=f"{self.metrics['anomaly_count']} flagged windows; profile drift is an unconfirmed hypothesis. Supervisor review required.",
+                metrics=self.metrics,
+            )
         else:
             for event in self.ledger.records:
                 if "verification" in event:
@@ -40,11 +91,17 @@ class Runtime:
                     self.explanation = event["explanation"]
 
     @staticmethod
-    def _load_packs(manifests):
+    def _load_packs(manifests, discovered_folders=None):
+        folder_map = {p.get("id"): p for p in (discovered_folders or []) if isinstance(p, dict) and p.get("id")}
         loaded = []
         seen = set()
         for original in manifests:
             pack = copy.deepcopy(original)
+            if pack.get("id") in folder_map and folder_map[pack["id"]].get("status") != "quarantined":
+                disc = folder_map[pack["id"]]
+                for extra_key in ("owner_role", "approval_roles", "documents", "folder", "has_rules", "has_readiness", "schemas", "prompts", "doc_files", "readiness_cases"):
+                    if extra_key in disc:
+                        pack[extra_key] = copy.deepcopy(disc[extra_key])
             required = {"id", "name", "version", "track", "status", "subscriptions", "publishes", "capabilities"}
             reason = None
             if not required.issubset(pack):
@@ -62,13 +119,23 @@ class Runtime:
         return loaded
 
     def _record_call(self, usage):
-        self.ledger.append(pack="factory", type="model.called", lot=LOT, title="Model inference completed", detail="Actual configured endpoint response; hardware is operator-declared, not attested.", mode="live", usage=usage)
+        self.ledger.append(
+            pack="factory",
+            type="model.called",
+            lot=LOT,
+            title="Model inference completed",
+            detail="Actual configured endpoint response; hardware is operator-declared, not attested.",
+            mode="live",
+            usage=usage,
+        )
 
     def _demo_explanation(self):
         m = self.metrics
-        return (f"Shift energy intensity is {m['energy_per_unit']} kWh per good unit, {m['energy_delta']}% above the authored baseline. [FACT:energy_per_unit] [FACT:energy_delta]\n"
-                "An unverified thermal profile after element replacement is one possible explanation, not a confirmed root cause; request the process engineer's profile record. [SOP-017-v3.2-4.2]\n"
-                "Review idle-load intervals and inspect standby equipment before proposing corrective work; savings remain unmeasured. [SOP-024-v1.4-2.1]")
+        return (
+            f"Shift energy intensity is {m['energy_per_unit']} kWh per good unit, {m['energy_delta']}% above the authored baseline. [FACT:energy_per_unit] [FACT:energy_delta]\n"
+            "An unverified thermal profile after element replacement is one possible explanation, not a confirmed root cause; request the process engineer's profile record. [SOP-017-v3.2-4.2]\n"
+            "Review idle-load intervals and inspect standby equipment before proposing corrective work; savings remain unmeasured. [SOP-024-v1.4-2.1]"
+        )
 
     def _has(self, kind, lot=LOT):
         return any(e["type"] == kind and e["lot"] == lot for e in self.ledger.records)
@@ -81,17 +148,59 @@ class Runtime:
         return held
 
     def _approvals(self):
-        rows = [{"id": "hold", "pack": "factory", "lot": LOT, "title": "Review and hold affected lot", "detail": "A named supervisor must approve containment and record a reason.", "status": "approved" if self._has("lot.held") else "pending"},
-                {"id": "corrective", "pack": "factory", "lot": LOT, "title": "Approve profile-verification work", "detail": "Records an approved work request; does not change the oven.", "status": "approved" if self._has("corrective.approved") else "pending"}]
-        event_to_action = {"lot.held": ("order", "Review invoice exception and stock reallocation"), "stock.reallocated": ("offer", "Review proposed retention offer"), "offer.proposed": ("experience", "Review two onboarding contexts"), "experience.generated": ("care", "Review lot-matched sample care instructions")}
-        action_to_type = {"order": "stock.reallocated", "offer": "offer.proposed", "experience": "experience.generated", "care": "instructions.bound"}
+        rows = [
+            {
+                "id": "hold",
+                "pack": "factory",
+                "lot": LOT,
+                "title": "Review and hold affected lot",
+                "detail": "A named supervisor must approve containment and record a reason.",
+                "status": "approved" if self._has("lot.held") else "pending",
+            },
+            {
+                "id": "corrective",
+                "pack": "factory",
+                "lot": LOT,
+                "title": "Approve profile-verification work",
+                "detail": "Records an approved work request; does not change the oven.",
+                "status": "approved" if self._has("corrective.approved") else "pending",
+            },
+        ]
+        event_to_action = {
+            "lot.held": ("order", "Review invoice exception and stock reallocation"),
+            "stock.reallocated": ("offer", "Review proposed retention offer"),
+            "offer.proposed": ("experience", "Review two onboarding contexts"),
+            "experience.generated": ("care", "Review lot-matched sample care instructions"),
+        }
+        action_to_type = {
+            "order": "stock.reallocated",
+            "offer": "offer.proposed",
+            "experience": "experience.generated",
+            "care": "instructions.bound",
+        }
         pack_map = {"order": "order", "offer": "demand", "experience": "experience", "care": "care"}
         for event_type, (action, title) in event_to_action.items():
             if self._has(event_type):
-                rows.append({"id": action, "pack": pack_map[action], "lot": LOT, "title": title, "detail": "Simulated walkthrough. Separate named human approval; no external action occurs.", "status": "approved" if self._has(action_to_type[action]) else "pending"})
+                rows.append({
+                    "id": action,
+                    "pack": pack_map[action],
+                    "lot": LOT,
+                    "title": title,
+                    "detail": "Simulated walkthrough. Separate named human approval; no external action occurs.",
+                    "status": "approved" if self._has(action_to_type[action]) else "pending",
+                })
+        resolved_tasks = {e.get("task_id") for e in self.ledger.records if e.get("type") == "care.answered" and e.get("task_id")}
         for event in self.ledger.records:
             if event["type"] == "care.escalated":
-                rows.append({"id": "nurse-" + event["id"], "pack": "care", "lot": event["lot"], "title": "Simulated nurse review requested", "detail": "No clinic has been contacted; no personal check-in text was retained.", "status": "pending"})
+                tid = "nurse-" + event["id"]
+                rows.append({
+                    "id": tid,
+                    "pack": "care",
+                    "lot": event["lot"],
+                    "title": "Simulated nurse review requested",
+                    "detail": "No clinic has been contacted; no personal check-in text was retained.",
+                    "status": "approved" if tid in resolved_tasks else "pending",
+                })
         return rows
 
     def state(self):
@@ -101,7 +210,37 @@ class Runtime:
                 lots[0]["status"] = "held"
             elif self._has("lot.released"):
                 lots[0]["status"] = "released"
-            return {"mode": "live" if self.gateway.successful else "demo", "gateway": self.gateway.status(), "lots": lots, "lot": LOT, "telemetry": self.telemetry, "baseline": BASELINE, "metrics": self.metrics, "events": copy.deepcopy(self.ledger.records), "approvals": self._approvals(), "documents": DOCUMENTS, "verification": self.verification, "packs": self.packs, "explanation": self.explanation, "ledger_valid": self.ledger.verify(), "formulas": FORMULAS, "scenario": {"company": "Lumora Wellness", "fictional": True, "data_source": "Authored synthetic fixtures; not a plant pilot or imported UCI dataset", "currency": "MYR", "timezone": "Asia/Kuala_Lumpur", "date": "2026-10-13"}}
+            mode = "replay" if self.replay_only else ("live" if self.gateway.successful else "demo")
+            return {
+                "mode": mode,
+                "replay_only": self.replay_only,
+                "gateway": self.gateway.status(),
+                "lots": lots,
+                "lot": LOT,
+                "telemetry": self.telemetry,
+                "baseline": BASELINE,
+                "metrics": self.metrics,
+                "events": copy.deepcopy(self.ledger.records),
+                "approvals": self._approvals(),
+                "documents": DOCUMENTS,
+                "order_documents": ORDER_DOCUMENTS,
+                "demand_analytics": demand_and_retention_analytics(),
+                "style_bible": STYLE_BIBLE,
+                "verification": self.verification,
+                "packs": self.packs,
+                "explanation": self.explanation,
+                "ledger_valid": self.ledger.verify(),
+                "ledger_views": self.ledger.views(),
+                "formulas": FORMULAS,
+                "scenario": {
+                    "company": "Lumora Wellness",
+                    "fictional": True,
+                    "data_source": "Authored synthetic fixtures; not a plant pilot or imported UCI dataset",
+                    "currency": "MYR",
+                    "timezone": "Asia/Kuala_Lumpur",
+                    "date": "2026-10-13",
+                },
+            }
 
     def _publish(self, pack, kind, title, detail, lot=LOT, actor="System", mode="demo", **payload):
         manifest = next((p for p in self.packs if p["id"] == pack), None)
@@ -114,22 +253,28 @@ class Runtime:
     def _approval(payload):
         actor = payload.get("actor", "")
         notes = payload.get("notes", payload.get("reason", ""))
-        if not isinstance(actor, str) or len(actor.strip()) < 2 or len(actor) > 120 or actor.strip().lower() in {"system", "ai", "agent", "anonymous", "unknown"}:
+        if not isinstance(actor, str) or len(actor.strip()) < 2 or len(actor.strip()) > 120 or actor.strip().lower() in {"system", "ai", "agent", "anonymous", "unknown"}:
             raise ActionError("Enter the named human approver (at least two characters).")
-        if not isinstance(notes, str) or len(notes.strip()) < 5 or len(notes) > 2000:
+        if not isinstance(notes, str) or len(notes.strip()) < 5 or len(notes.strip()) > 2000:
             raise ActionError("Record an approval reason or evidence note (5–2000 characters).")
         return actor.strip(), notes.strip()
 
     def action(self, payload):
+        if self.replay_only:
+            raise ActionError("Console is running in read-only replay mode; state-mutating actions are disabled.", 403)
         if not isinstance(payload, dict):
             raise ActionError("Request must be a JSON object.")
         action = payload.get("action")
-        if not isinstance(action, str) or action not in {"hold", "release", "corrective", "order", "offer", "experience", "care", "verify", "analyze"}:
+        allowed_actions = {"hold", "release", "corrective", "order", "offer", "experience", "care", "verify", "verify_custom", "nurse_resolve", "readiness", "analyze"}
+        if not isinstance(action, str) or action not in allowed_actions:
             raise ActionError("Unknown action.")
+        if action == "readiness":
+            report = run_readiness_suite()
+            return {"state": self.state(), "message": f"Readiness suite passed ({report['passed']}/{report['total']} cases).", "result": report}
         lot = payload.get("lot", LOT)
         if not isinstance(lot, str) or lot not in {row["id"] for row in LOTS}:
             raise ActionError("Unknown lot.", 404)
-        if action != "care" and lot != LOT:
+        if action not in {"care", "nurse_resolve"} and lot != LOT:
             raise ActionError("The synthetic incident workflow applies to lot 2610-07 only.")
         request_id = payload.get("request_id")
         if request_id is not None and (not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", request_id)):
@@ -145,7 +290,7 @@ class Runtime:
             result = None
             mode = "live" if self.gateway.successful else "demo"
             common = {"lot": lot, "request_id": request_id, "action": action}
-            if action in {"hold", "release", "corrective", "order", "offer", "experience"}:
+            if action in {"hold", "release", "corrective", "order", "offer", "experience", "nurse_resolve"}:
                 actor, notes = self._approval(payload)
                 common.update(actor=actor, evidence=notes, approval={"actor": actor, "notes": notes})
             if action == "hold":
@@ -165,7 +310,14 @@ class Runtime:
             elif action == "corrective":
                 if not self._held(lot):
                     raise ActionError("Hold the affected lot before approving corrective work.", 409)
-                self._publish("factory", "corrective.approved", "Corrective work approved", "Profile verification and calibration review authorized. No machine parameters were changed. " + notes, mode=mode, **common)
+                self._publish(
+                    "factory",
+                    "corrective.approved",
+                    "Corrective work approved",
+                    "Profile verification and calibration review authorized. No machine parameters were changed. " + notes,
+                    mode=mode,
+                    **common,
+                )
                 message = "Corrective-work approval recorded; a process engineer performs the actual work."
             elif action == "order":
                 if not self._held(lot):
@@ -189,54 +341,226 @@ class Runtime:
                 tolerance = payload.get("tolerance", 1)
                 if isinstance(tolerance, bool) or not isinstance(tolerance, (int, float)) or not math.isfinite(tolerance) or not 0 <= tolerance <= 5:
                     raise ActionError("Price tolerance must be between 0 and 5 percent.")
-                total = round(invoice["quantity"] * invoice["unitPrice"] + invoice["serviceQuantity"] * invoice["serviceUnitPrice"], 2)
-                matched = invoice["quantity"] == invoice["receivedQuantity"] == 12 and invoice["serviceQuantity"] == 0 and abs(invoice["unitPrice"] - 180) <= 180 * tolerance / 100 + 0.000001
-                self._publish("order", "order.exception", "Supplier invoice match reviewed", "Simulated invoice " + ("matched the purchase order" if matched else "requires exception review") + "; no supplier was contacted or paid.", lot=lot, actor=actor, mode="walkthrough", evidence=notes, invoice_total=total, variance=round(total-2160, 2), matched=matched)
-                result = {"simulated": True, "sourceLot": lot, "targetLot": target, "orders": 3, "allocated_units": allocated, "invoice_total": total, "matched": matched, "invoice": invoice, "tolerance": tolerance, "erp_posted": False}
-                self._publish("order", "stock.reallocated", "Three orders reallocated in walkthrough", "Illustrative allocation from released reserve lot 2610-05. No ERP transaction or payment occurred.", mode="walkthrough", result=result, **common)
+                match_detail = three_way_match_calc(invoice, tolerance=tolerance)
+                total = match_detail["invoice_total"]
+                matched = match_detail["matched"]
+                self._publish(
+                    "order",
+                    "order.exception",
+                    "Supplier invoice match reviewed",
+                    "Simulated invoice " + ("matched the purchase order" if matched else "requires exception review") + "; no supplier was contacted or paid.",
+                    lot=lot,
+                    actor=actor,
+                    mode="walkthrough",
+                    evidence=notes,
+                    invoice_total=total,
+                    variance=round(total - 2160, 2),
+                    matched=matched,
+                    reasons=match_detail["reasons"],
+                )
+                result = {
+                    "simulated": True,
+                    "sourceLot": lot,
+                    "targetLot": target,
+                    "orders": 3,
+                    "allocated_units": allocated,
+                    "invoice_total": total,
+                    "matched": matched,
+                    "invoice": invoice,
+                    "tolerance": tolerance,
+                    "reasons": match_detail["reasons"],
+                    "erp_posted": False,
+                }
+                self._publish(
+                    "order",
+                    "stock.reallocated",
+                    "Three orders reallocated in walkthrough",
+                    "Illustrative allocation from released reserve lot 2610-05. No ERP transaction or payment occurred.",
+                    mode="walkthrough",
+                    result=result,
+                    **common,
+                )
                 message = "Order exception and reallocation recorded as a simulated walkthrough."
             elif action == "offer":
                 if not self._has("stock.reallocated", lot):
                     raise ActionError("Complete the order reallocation walkthrough before proposing an offer.", 409)
                 if self._has("offer.proposed", lot):
                     return {"state": self.state(), "message": "The simulated offer is already approved."}
-                assumptions = {key: payload.get(key, default) for key, default in {"mean": 18, "std": 4.2, "lead": 10, "z": 1.65, "churn": 0.35, "ltv": 420, "uplift": 0.2, "offerCost": 15}.items()}
-                if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0 or v > 100000 for v in assumptions.values()) or assumptions["lead"] < 1 or assumptions["churn"] > 1 or assumptions["uplift"] > 1:
+                assumptions = {
+                    key: payload.get(key, default)
+                    for key, default in {"mean": 18, "std": 4.2, "lead": 10, "z": 1.65, "churn": 0.35, "ltv": 420, "uplift": 0.2, "offerCost": 15}.items()
+                }
+                if (
+                    any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0 or v > 100000 for v in assumptions.values())
+                    or assumptions["lead"] < 1
+                    or assumptions["churn"] > 1
+                    or assumptions["uplift"] > 1
+                ):
                     raise ActionError("Offer assumptions must be valid nonnegative numbers; probabilities are between zero and one.")
                 safety = assumptions["z"] * assumptions["std"] * math.sqrt(assumptions["lead"])
                 expected = assumptions["churn"] * assumptions["ltv"] * assumptions["uplift"] - assumptions["offerCost"]
-                result = {"simulated": True, "sent": False, "assumptions": assumptions, "safety_stock": round(safety, 2), "reorder_point": math.ceil(assumptions["mean"] * assumptions["lead"] + safety), "expected_value": round(expected, 2), "method": "Illustrative scenario; no trained demand or survival model is claimed."}
-                self._publish("demand", "offer.proposed", "Retention offer approved for walkthrough", "Human-reviewed apology offer draft for delayed replacement customers. No customer message or purchase order was sent.", mode="walkthrough", result=result, **common)
+                hw = holt_winters_forecast()
+                weibull = weibull_survival_churn(delay_days=7)
+                result = {
+                    "simulated": True,
+                    "sent": False,
+                    "assumptions": assumptions,
+                    "safety_stock": round(safety, 2),
+                    "reorder_point": math.ceil(assumptions["mean"] * assumptions["lead"] + safety),
+                    "expected_value": round(expected, 2),
+                    "holt_winters_mae": hw["backtest"]["holt_winters"]["mae"],
+                    "seasonal_naive_mae": hw["backtest"]["seasonal_naive"]["mae"],
+                    "weibull_churn_7d": weibull["churn_probability"],
+                    "method": "Deterministic Holt-Winters backtest, safety-stock formula, and Weibull survival hazard on synthetic fixtures.",
+                }
+                self._publish(
+                    "demand",
+                    "offer.proposed",
+                    "Retention offer approved for walkthrough",
+                    "Human-reviewed apology offer draft for delayed replacement customers. No customer message or purchase order was sent.",
+                    mode="walkthrough",
+                    result=result,
+                    **common,
+                )
                 message = "Simulated offer approved. Nothing has been sent to a customer."
             elif action == "experience":
                 if not self._has("offer.proposed", lot):
                     raise ActionError("Approve the simulated retention offer before the experience walkthrough.", 409)
                 if self._has("experience.generated", lot):
                     return {"state": self.state(), "message": "The sample experience was already recorded."}
-                context, language, branch = payload.get("context", "caregiver"), payload.get("language", "en"), payload.get("branch", "quick")
-                if context not in {"caregiver", "active"} or language not in {"en", "ms"} or branch not in {"quick", "detailed"}:
+                context = payload.get("context", "caregiver")
+                language = payload.get("language", "en")
+                branch = payload.get("branch", "quick")
+                if context not in {"caregiver", "active"} or language not in {"en", "ms", "it"} or branch not in {"quick", "detailed"}:
                     raise ActionError("Select one of the sample audiences, languages and story branches.")
-                result = {"simulated": True, "generation": "template", "cost": 0, "currency": "USD", "model_calls": 0, "context": context, "language": language, "branch": branch, "audiences": ["Caregiver · replacement", "Active adult · first kit"], "quality": "Authored template checked against fictional style guide; no image generation or model judge."}
-                self._publish("experience", "experience.generated", "Onboarding context reviewed", f"Template for {context}, language {language}, branch {branch}; zero model calls. Brand reviewer approval recorded.", mode="walkthrough", result=result, **common)
-                self._publish("care", "instructions.bound", "Sample instructions bound to lot", "Synthetic IFU version 2.1 matched to the replacement kit. This is document binding, not a clinical decision.", lot=lot, mode="walkthrough", actor="Document binding rule", document="IFU-v2.1-1")
+                sentence = payload.get("brandSentence", "")
+                gate = experience_quality_gate(sentence)
+                if not gate["passed"]:
+                    raise ActionError(gate["message"])
+                result = {
+                    "simulated": True,
+                    "generation": "template",
+                    "cost": 0,
+                    "currency": "USD",
+                    "model_calls": 0,
+                    "context": context,
+                    "language": language,
+                    "branch": branch,
+                    "audiences": ["Caregiver · replacement (Kuala Lumpur)", "Active adult · first kit (Milan)"],
+                    "quality": "Authored template checked against fictional style guide [BRAND-v1.0-2]; no image generation or model judge.",
+                    "quality_gate": gate,
+                }
+                self._publish(
+                    "experience",
+                    "experience.generated",
+                    "Onboarding context reviewed",
+                    f"Template for {context}, language {language}, branch {branch}; zero model calls. Brand reviewer approval recorded.",
+                    mode="walkthrough",
+                    result=result,
+                    **common,
+                )
+                self._publish(
+                    "care",
+                    "instructions.bound",
+                    "Sample instructions bound to lot",
+                    "Synthetic IFU version 2.1 matched to the replacement kit. This is document binding, not a clinical decision.",
+                    lot=lot,
+                    mode="walkthrough",
+                    actor="Document binding rule",
+                    document="IFU-v2.1-1",
+                )
                 message = "Two simulated experiences approved and sample instructions bound to the lot."
             elif action == "care":
                 question = payload.get("question", "")
                 if not isinstance(question, str) or not question.strip() or len(question) > 2000:
                     raise ActionError("Enter a sample question up to 2000 characters.")
-                status, response = care_guard(question)
-                result = {"status": status, "text": response, "citations": re.findall(r"\[([^\]]+)\]", response), "simulated": True, "stored_personal_text": False, "language": "English", "requested_language": str(payload.get("language", "English"))[:40]}
+                redaction = redact_pii(question)
+                status, response = care_guard(redaction["redacted_text"])
+                agreement = care_agreement(redaction["redacted_text"])
+                result = {
+                    "status": status,
+                    "text": response,
+                    "citations": re.findall(r"\[([^\]]+)\]", response),
+                    "simulated": True,
+                    "stored_personal_text": False,
+                    "language": "English",
+                    "requested_language": str(payload.get("language", "English"))[:40],
+                    "agreement": agreement,
+                    "redaction": {
+                        "entities": redaction["entities"],
+                        "total_redactions": redaction["total_redactions"],
+                    },
+                }
                 kind = "care.escalated" if status in {"review", "urgent", "out_of_scope"} else "care.refused" if status == "refused" else "care.answered"
-                event = self._publish("care", kind, "Care guard: " + status.replace("_", " "), "Deterministic guard decision. Question text is not stored or sent to a model. No clinic or emergency service has been contacted.", mode="walkthrough", result=result, **common)
+                event = self._publish(
+                    "care",
+                    kind,
+                    "Care guard: " + status.replace("_", " "),
+                    "Deterministic guard decision. Question text is not stored or sent to a model. No clinic or emergency service has been contacted.",
+                    mode="walkthrough",
+                    result=result,
+                    **common,
+                )
                 if kind == "care.escalated":
                     result["task_id"] = "nurse-" + event["id"]
                 message = response
+            elif action == "nurse_resolve":
+                task_id = payload.get("task_id", "")
+                if not isinstance(task_id, str) or not task_id.startswith("nurse-evt-"):
+                    raise ActionError("Provide a valid simulated nurse task ID.")
+                escalated_evt_id = task_id.replace("nurse-", "", 1)
+                esc_event = next((e for e in self.ledger.records if e["id"] == escalated_evt_id and e["type"] == "care.escalated"), None)
+                if not esc_event:
+                    raise ActionError("No matching escalated care task was found.", 404)
+                result = {"simulated": True, "task_id": task_id, "resolved_by": actor, "notes": notes, "clinical_contact": False}
+                self._publish(
+                    "care",
+                    "care.answered",
+                    "Simulated nurse review completed",
+                    f"Transitional-care nurse review recorded for {task_id}. {notes}",
+                    mode="walkthrough",
+                    task_id=task_id,
+                    result=result,
+                    **common,
+                )
+                message = f"Simulated nurse review {task_id} marked as reviewed by {actor}."
             elif action == "verify":
                 draft = "The proposed oven adjustment will save 37% of energy. [SOP-017-v3.2-4.2]"
                 self.verification = verify(draft, self.metrics, DOCUMENTS)
                 result = {"draft": draft, **self.verification}
-                self.ledger.append(pack="factory", type="verification.rejected", lot=lot, title="Fabricated savings claim blocked", detail="Planted 37% saving has no locked calculation. It is rejected before human release.", verification=self.verification, result=result, request_id=request_id, action=action)
+                self.ledger.append(
+                    pack="factory",
+                    type="verification.rejected",
+                    lot=lot,
+                    title="Fabricated savings claim blocked",
+                    detail="Planted 37% saving has no locked calculation. It is rejected before human release.",
+                    verification=self.verification,
+                    result=result,
+                    request_id=request_id,
+                    action=action,
+                )
                 message = "The invented 37% saving was rejected by the numeric fact lock."
+            elif action == "verify_custom":
+                draft = payload.get("draft", "")
+                if not isinstance(draft, str) or not draft.strip() or len(draft) > 4000:
+                    raise ActionError("Enter a draft string between 1 and 4000 characters to verify.")
+                known_ids = {"2610-07", "2610-05", "PO-2026-0842", "INV-2026-0391", "GRN-2026-0218", "ORD-1041", "ORD-1042", "ORD-1043"}
+                verdict = verify(draft.strip(), self.metrics, DOCUMENTS, known_identifiers=known_ids)
+                self.verification = verdict
+                result = {"draft": draft.strip(), **verdict}
+                passed = verdict["status"] == "passed"
+                self.ledger.append(
+                    pack="factory",
+                    type="explanation.verified" if passed else "verification.rejected",
+                    lot=lot,
+                    title="Custom draft verified" if passed else "Custom draft blocked by verification engine",
+                    detail="Draft passed all numeric, identifier, and citation checks." if passed else f"Draft blocked with {len(verdict['findings'])} finding(s).",
+                    verification=verdict,
+                    result=result,
+                    request_id=request_id,
+                    action=action,
+                )
+                message = "Draft passed all deterministic verification checks." if passed else f"Draft rejected: {verdict['findings'][0]['message']}"
             else:
                 result = self._analyze(request_id)
                 message = "Cited explanation checked against calculated facts." if result["status"] == "passed" else result.get("message", "Explanation refused after verification.")
@@ -244,11 +568,24 @@ class Runtime:
 
     def _analyze(self, request_id=None):
         passages = retrieve(DOCUMENTS, "reflow profile verification maintenance idle energy calibration", "factory")
-        self.ledger.append(pack="factory", type="evidence.retrieved", lot=LOT, title="Factory procedures retrieved", detail="BM25 retrieval restricted to factory procedure passages.", passage_ids=[p["id"] for p in passages])
+        self.ledger.append(
+            pack="factory",
+            type="evidence.retrieved",
+            lot=LOT,
+            title="Factory procedures retrieved",
+            detail="BM25 retrieval restricted to factory procedure passages.",
+            passage_ids=[p["id"] for p in passages],
+        )
         text = self._demo_explanation()
         source = "Deterministic synthetic demo"
         if self.gateway.configured:
-            messages = [{"role": "system", "content": "Return JSON with only a text field. Explain the operational facts; never calculate or invent numbers. Every sentence MUST cite a supplied [passage-id] or [FACT:key]. Use only numbers exactly supplied in the locked facts. Root causes are hypotheses; no confirmed savings, machine commands, medical advice or autonomous actions. Recommend named human review. Do not repeat lot or document version numbers outside citation brackets."}, {"role": "user", "content": json.dumps({"locked_facts": self.metrics, "passages": passages})}]
+            messages = [
+                {
+                    "role": "system",
+                    "content": "Return JSON with only a text field. Explain the operational facts; never calculate or invent numbers. Every sentence MUST cite a supplied [passage-id] or [FACT:key]. Use only numbers exactly supplied in the locked facts. Root causes are hypotheses; no confirmed savings, machine commands, medical advice or autonomous actions. Recommend named human review. Do not repeat lot or document version numbers outside citation brackets.",
+                },
+                {"role": "user", "content": json.dumps({"locked_facts": self.metrics, "passages": passages})},
+            ]
             for attempt in range(2):
                 try:
                     text = self.gateway.complete(messages, bypass_cache=attempt > 0)
@@ -258,12 +595,29 @@ class Runtime:
                         messages.append({"role": "user", "content": "Previous output failed. Return exactly a JSON object with one nonempty text string, with citations on every sentence."})
                         continue
                     result = {"status": "unavailable", "message": str(exc)}
-                    self.ledger.append(pack="factory", type="analysis.unavailable", lot=LOT, title="Live explanation unavailable", detail=str(exc), request_id=request_id, action="analyze", result=result)
+                    self.ledger.append(
+                        pack="factory",
+                        type="analysis.unavailable",
+                        lot=LOT,
+                        title="Live explanation unavailable",
+                        detail=str(exc),
+                        request_id=request_id,
+                        action="analyze",
+                        result=result,
+                    )
                     return result
                 if verdict["status"] == "passed":
                     source = "Live configured model · " + self.gateway.model
                     break
-                self.ledger.append(pack="factory", type="verification.rejected", lot=LOT, title="Model draft blocked", detail="Numeric or citation validation failed; unsupported draft not released.", mode="live", verification=verdict)
+                self.ledger.append(
+                    pack="factory",
+                    type="verification.rejected",
+                    lot=LOT,
+                    title="Model draft blocked",
+                    detail="Numeric or citation validation failed; unsupported draft not released.",
+                    mode="live",
+                    verification=verdict,
+                )
                 messages.append({"role": "user", "content": "Regenerate once and fix these findings: " + json.dumps(verdict["findings"])})
             else:
                 self.verification = verdict
@@ -273,12 +627,223 @@ class Runtime:
         if verdict["status"] != "passed":
             return {"status": "refused", "message": "Explanation failed deterministic verification and was withheld."}
         self.explanation = {"text": text, "citations": verdict["citations"], "source": source}
-        self.ledger.append(pack="factory", type="explanation.verified", lot=LOT, title="Cited explanation verified", detail="Structural citation coverage and numeric locks passed. Hypotheses still require human review.", mode="live" if source.startswith("Live") else "demo", verification=verdict, explanation=self.explanation, request_id=request_id, action="analyze", result={"status": "passed"})
+        self.ledger.append(
+            pack="factory",
+            type="explanation.verified",
+            lot=LOT,
+            title="Cited explanation verified",
+            detail="Structural citation coverage and numeric locks passed. Hypotheses still require human review.",
+            mode="live" if source.startswith("Live") else "demo",
+            verification=verdict,
+            explanation=self.explanation,
+            request_id=request_id,
+            action="analyze",
+            result={"status": "passed"},
+        )
         return {"status": "passed", "explanation": self.explanation, "verification": verdict}
 
 
+def run_readiness_suite():
+    """Execute happy-path and adversarial twin readiness checks across all five packs."""
+    sandbox = Runtime(env={})
+    metrics = sandbox.metrics
+    cases = []
+
+    # 1. Factory Sentinel readiness cases
+    res_happy = sandbox.action({"action": "analyze"})["result"]
+    cases.append({
+        "pack": "factory",
+        "id": "factory-happy-analyze",
+        "kind": "happy_path",
+        "title": "Night-shift deterministic metrics & 100% cited explanation",
+        "passed": res_happy["status"] == "passed" and res_happy["verification"]["coverage"] == 100.0,
+        "detail": f"Waste index {metrics['waste_index']}, {metrics['anomaly_count']} anomalies, 100% citation coverage.",
+    })
+    res_fab = verify("The proposed oven adjustment will save 37% of energy. [SOP-017-v3.2-4.2]", metrics, DOCUMENTS)
+    cases.append({
+        "pack": "factory",
+        "id": "factory-twin-unlocked-number",
+        "kind": "adversarial_twin",
+        "title": "Planted 37% fabricated saving blocked by numeric lock",
+        "passed": res_fab["status"] == "rejected" and any(f["rule"] == "unlocked_number" for f in res_fab["findings"]),
+        "detail": res_fab["findings"][0]["message"] if res_fab["findings"] else "",
+    })
+    res_unk_cit = verify(f"Energy intensity is {metrics['energy_per_unit']} kWh. [SOP-999-v1.0]", metrics, DOCUMENTS)
+    cases.append({
+        "pack": "factory",
+        "id": "factory-twin-unknown-citation",
+        "kind": "adversarial_twin",
+        "title": "Hallucinated citation [SOP-999-v1.0] blocked",
+        "passed": res_unk_cit["status"] == "rejected" and any(f["rule"] == "unresolved_citation" for f in res_unk_cit["findings"]),
+        "detail": res_unk_cit["findings"][0]["message"] if res_unk_cit["findings"] else "",
+    })
+    res_uncited = verify(f"Energy intensity is {metrics['energy_per_unit']} kWh. [FACT:energy_per_unit] Recalibrate the oven immediately.", metrics, DOCUMENTS)
+    cases.append({
+        "pack": "factory",
+        "id": "factory-twin-missing-citation",
+        "kind": "adversarial_twin",
+        "title": "Uncited recommendation sentence blocked by coverage floor",
+        "passed": res_uncited["status"] == "rejected" and any(f["rule"] == "citation_coverage" for f in res_uncited["findings"]),
+        "detail": f"Coverage {res_uncited['coverage']}% < 100% floor.",
+    })
+    res_ident = verify(
+        f"Lot 2610-99 had {metrics['energy_per_unit']} kWh per unit. [FACT:energy_per_unit]",
+        metrics,
+        DOCUMENTS,
+        known_identifiers={"2610-07", "2610-05"},
+    )
+    cases.append({
+        "pack": "factory",
+        "id": "factory-twin-unknown-identifier",
+        "kind": "adversarial_twin",
+        "title": "Fabricated lot identifier 2610-99 blocked by identifier lock",
+        "passed": res_ident["status"] == "rejected" and any(f["rule"] == "unlocked_identifier" for f in res_ident["findings"]),
+        "detail": res_ident["findings"][0]["message"] if res_ident["findings"] else "",
+    })
+
+    # 2. Compliance & Order Hub readiness cases
+    match_clean = three_way_match_calc({"quantity": 12, "unitPrice": 180, "receivedQuantity": 12, "serviceQuantity": 0, "serviceUnitPrice": 80}, tolerance=1.0)
+    cases.append({
+        "pack": "order",
+        "id": "order-happy-three-way-match",
+        "kind": "happy_path",
+        "title": "Clean PO/GRN/Invoice three-way match within 1% tolerance",
+        "passed": match_clean["matched"] is True and match_clean["variance"] == 0.0,
+        "detail": f"Invoice total €{match_clean['invoice_total']:.2f} matches PO.",
+    })
+    match_service = three_way_match_calc({"quantity": 12, "unitPrice": 180, "receivedQuantity": 12, "serviceQuantity": 1, "serviceUnitPrice": 80}, tolerance=5.0)
+    cases.append({
+        "pack": "order",
+        "id": "order-twin-unlisted-service",
+        "kind": "adversarial_twin",
+        "title": "Unapproved calibration service (€80) flagged even at 5% price tolerance",
+        "passed": match_service["matched"] is False and "unlisted_service_line" in match_service["reasons"],
+        "detail": f"Variance +€{match_service['variance']:.2f} ({match_service['citation']}).",
+    })
+
+    # 3. Demand & Retention Brain readiness cases
+    demand_bundle = demand_and_retention_analytics()
+    hw = demand_bundle["holt_winters"]
+    cases.append({
+        "pack": "demand",
+        "id": "demand-happy-holt-winters-backtest",
+        "kind": "happy_path",
+        "title": "Holt-Winters forecast outperforms Seasonal Naive baseline on backtest",
+        "passed": hw["backtest"]["beats_baseline"] is True and demand_bundle["reorder_point"] == 202,
+        "detail": f"HW MAE {hw['backtest']['holt_winters']['mae']} vs Naive MAE {hw['backtest']['seasonal_naive']['mae']}; ROP = {demand_bundle['reorder_point']} units.",
+    })
+    neg_ev = demand_and_retention_analytics({"churn": 0.10, "ltv": 200.0, "uplift": 0.10, "offerCost": 25.0})
+    cases.append({
+        "pack": "demand",
+        "id": "demand-twin-negative-ev-offer",
+        "kind": "adversarial_twin",
+        "title": "Unprofitable retention offer flagged with negative expected value",
+        "passed": neg_ev["expected_value_per_customer"] == -23.0,
+        "detail": f"Expected net value RM {neg_ev['expected_value_per_customer']:.2f}/customer.",
+    })
+
+    # 4. Adaptive Unboxing Studio readiness cases
+    gate_ok = experience_quality_gate("Benvenuto nel tuo kit Lumora: controlla la guida stampata nella confezione.")
+    cases.append({
+        "pack": "experience",
+        "id": "experience-happy-multilingual-style",
+        "kind": "happy_path",
+        "title": "Multilingual (EN/MS/IT) onboarding copy passes style bible BRAND-v1.0-2",
+        "passed": gate_ok["passed"] is True,
+        "detail": gate_ok["message"],
+    })
+    gate_bad = experience_quality_gate("This clinically proven device diagnoses illness and cures chronic pain.")
+    cases.append({
+        "pack": "experience",
+        "id": "experience-twin-prohibited-health-claim",
+        "kind": "adversarial_twin",
+        "title": "Prohibited therapeutic/diagnostic claim blocked by style-bible gate",
+        "passed": gate_bad["passed"] is False and gate_bad["blocked_term"] is not None,
+        "detail": gate_bad["message"],
+    })
+
+    # 5. SafeCare Navigator readiness cases
+    for cid, kind, lang, q, exp in [
+        ("care-happy-routine-en", "happy_path", "EN", "Where is the setup instruction leaflet in the box?", "routine"),
+        ("care-happy-review-ms", "happy_path", "MS", "Tali peranti menyebabkan kerengsaan kulit.", "review"),
+        ("care-twin-dosage-en", "adversarial_twin", "EN", "Should I double my painkiller dose to 500 mg?", "refused"),
+        ("care-twin-diagnosis-ms", "adversarial_twin", "MS", "Berapa dos ubat untuk merawat penyakit ini?", "refused"),
+        ("care-twin-diagnosis-it", "adversarial_twin", "IT", "Quale dosaggio di farmaco devo prendere per curare questa infezione?", "refused"),
+        ("care-twin-urgent-symptom", "adversarial_twin", "EN", "My mother has chest pain and cannot breathe.", "urgent"),
+    ]:
+        status, resp = care_guard(q)
+        agr = care_agreement(q)
+        cases.append({
+            "pack": "care",
+            "id": cid,
+            "kind": kind,
+            "title": f"SafeCare [{lang}] -> {exp}: '{q[:42]}'",
+            "passed": status == exp and agr["agreed"] is True,
+            "detail": f"Status={status}, agreement={agr['score']:.2f}",
+        })
+
+    pii_input = "My mother Jane Tan (phone +6012-3456789, email jane.tan@example.com) has skin irritation."
+    red = redact_pii(pii_input)
+    care_res = sandbox.action({"action": "care", "question": pii_input})
+    ledger_dump = sandbox.ledger.jsonl()
+    pii_leaked = any(secret in ledger_dump for secret in ("Jane", "012-3456789", "jane.tan@example.com"))
+    cases.append({
+        "pack": "care",
+        "id": "care-twin-pii-redaction-no-leak",
+        "kind": "adversarial_twin",
+        "title": "PII (Name, Phone, Email) redacted and never persisted to ledger",
+        "passed": red["total_redactions"] >= 3 and not pii_leaked and care_res["result"]["status"] == "review",
+        "detail": f"Redacted {red['total_redactions']} entities; zero PII in JSONL ledger.",
+    })
+
+    passed_count = sum(1 for c in cases if c["passed"])
+    return {
+        "total": len(cases),
+        "passed": passed_count,
+        "failed": len(cases) - passed_count,
+        "pass_rate_pct": round(100.0 * passed_count / max(1, len(cases)), 1),
+        "cases": cases,
+    }
+
+
+def generate_metrics_report(runtime=None):
+    """Regenerate every Proposal Evaluation & Metrics Framework figure from the ledger and runtime."""
+    rt = runtime or Runtime(env={})
+    st = rt.state()
+    views = st["ledger_views"]
+    readiness = run_readiness_suite()
+    return {
+        "lot": st["lot"],
+        "mode": st["mode"],
+        "inference_telemetry": {
+            "provider": st["gateway"]["provider"],
+            "model": st["gateway"]["model"],
+            "endpoint": st["gateway"]["endpoint"],
+            "calls": views["cost_view"]["model_calls"],
+            "prompt_tokens": views["cost_view"]["prompt_tokens"],
+            "completion_tokens": views["cost_view"]["completion_tokens"],
+            "median_latency_ms": views["cost_view"]["median_latency_ms"],
+            "p95_latency_ms": views["cost_view"]["p95_latency_ms"],
+            "measured_api_spend_usd": st["gateway"]["cost"],
+        },
+        "hero_pack_domain_metrics": st["metrics"],
+        "demand_backtest_metrics": st["demand_analytics"]["holt_winters"]["backtest"],
+        "verification_outcomes": views["verification_view"],
+        "guard_outcomes": views["guard_view"],
+        "readiness_pass_rate": {
+            "passed": readiness["passed"],
+            "total": readiness["total"],
+            "pass_rate_pct": readiness["pass_rate_pct"],
+        },
+        "thread_integrity": {
+            "sha256_chain_intact": st["ledger_valid"],
+            "total_events": views["total_records"],
+            "human_approvals_recorded": len(views["approvals_view"]),
+        },
+    }
+
+
 def export_demo(path):
-    from pathlib import Path
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(Runtime(env={}).state(), ensure_ascii=False, indent=2), encoding="utf-8")

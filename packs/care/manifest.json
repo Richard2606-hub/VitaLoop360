@@ -1,0 +1,32 @@
+{
+  "id": "care",
+  "name": "SafeCare Navigator",
+  "version": "0.2.0",
+  "track": "Health and Wellbeing",
+  "owner_role": "Family Caregiver / Transitional-Care Nurse",
+  "status": "walkthrough",
+  "subscriptions": [
+    "experience.generated"
+  ],
+  "publishes": [
+    "instructions.bound",
+    "care.escalated",
+    "care.refused",
+    "care.answered"
+  ],
+  "capabilities": [
+    "simulation",
+    "ifu.retrieve",
+    "pii.redact",
+    "guard.denylist",
+    "agreement.compute",
+    "nurse_queue.open"
+  ],
+  "approval_roles": [
+    "Transitional-Care Nurse"
+  ],
+  "documents": [
+    "IFU-v2.1-1",
+    "IFU-v2.1-4"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "pack": "experience",
+  "cases": [
+    {
+      "id": "experience-happy-kl-ms",
+      "type": "happy_path",
+      "title": "Replacement customer in Kuala Lumpur (Bahasa Melayu)",
+      "context": "caregiver",
+      "language": "ms",
+      "branch": "detailed",
+      "sentence": "Terima kasih kerana bersabar sementara kit gantian anda disediakan.",
+      "expected_quality_passed": true
+    },
+    {
+      "id": "experience-happy-milan-it",
+      "type": "happy_path",
+      "title": "First-time customer in Milan (Italiano)",
+      "context": "active",
+      "language": "it",
+      "branch": "quick",
+      "sentence": "Benvenuto nel tuo kit Lumora: controlla la guida stampata nella confezione.",
+      "expected_quality_passed": true
+    },
+    {
+      "id": "experience-twin-prohibited-claim",
+      "type": "adversarial_twin",
+      "title": "Prohibited medical/diagnostic claim blocked by quality gate",
+      "context": "caregiver",
+      "language": "en",
+      "branch": "quick",
+      "sentence": "This clinically proven device diagnoses illness and cures chronic pain.",
+      "expected_quality_passed": false
+    }
+  ]
+}

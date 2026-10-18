@@ -1,0 +1,37 @@
+{
+  "pack": "experience",
+  "coverage_floor": 100.0,
+  "style_bible": {
+    "voice": "Calm, practical, transparent, non-clinical",
+    "palette": ["#d9e7de", "#31554b", "#f3ede2", "#c8b2a0"],
+    "audiences": ["caregiver", "active"],
+    "languages": ["en", "ms", "it"],
+    "branches": ["quick", "detailed"],
+    "payer": "Brand Experience & Customer Retention Budget",
+    "forbidden_claim_patterns": [
+      "diagnos",
+      "treat",
+      "cure",
+      "prevent",
+      "medical-grade",
+      "clinically proven",
+      "reduce pain",
+      "heal",
+      "merawat",
+      "menyembuh",
+      "mencegah",
+      "mengesan penyakit",
+      "mengurangkan kesakitan",
+      "guarire",
+      "curare",
+      "diagnosticare",
+      "clinicamente provato"
+    ]
+  },
+  "refusal_rules": [
+    {
+      "id": "no_medical_or_therapeutic_claims",
+      "description": "Block any onboarding copy that makes diagnostic, therapeutic, cure, or pain-reduction claims in English, Bahasa Melayu, or Italian."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "pack": "order",
+  "coverage_floor": 100.0,
+  "thresholds": {
+    "default_price_tolerance_pct": 1.0,
+    "max_price_tolerance_pct": 5.0,
+    "po_approved_quantity": 12,
+    "po_approved_unit_price_eur": 180.0,
+    "reserve_lot": "2610-05",
+    "reserve_lot_units": 840
+  },
+  "refusal_rules": [
+    {
+      "id": "no_autonomous_payment",
+      "description": "Never authorize invoice payment or post ERP reallocation without named human review."
+    },
+    {
+      "id": "unlisted_service_requires_exception",
+      "description": "Services absent from the purchase order always trigger an order.exception regardless of price tolerance."
+    }
+  ],
+  "escalation_rules": [
+    {
+      "id": "three_way_match_variance",
+      "trigger": "matched == false",
+      "assignee_role": "AP & Order Management Clerk"
+    }
+  ]
+}

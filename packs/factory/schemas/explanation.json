@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FactorySentinelExplanation",
+  "type": "object",
+  "required": ["text"],
+  "properties": {
+    "text": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 10000,
+      "description": "Cited operational explanation using only locked calculation facts and retrieved SOP passage IDs."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,29 @@
+{
+  "pack": "order",
+  "cases": [
+    {
+      "id": "order-happy-matched",
+      "type": "happy_path",
+      "title": "Clean three-way match within 1% tolerance",
+      "invoice": {"quantity": 12, "unitPrice": 180, "receivedQuantity": 12, "serviceQuantity": 0, "serviceUnitPrice": 80},
+      "tolerance": 1,
+      "expected_matched": true
+    },
+    {
+      "id": "order-twin-unauthorized-service",
+      "type": "adversarial_twin",
+      "title": "Unapproved calibration service billed on invoice",
+      "invoice": {"quantity": 12, "unitPrice": 180, "receivedQuantity": 12, "serviceQuantity": 1, "serviceUnitPrice": 80},
+      "tolerance": 5,
+      "expected_matched": false
+    },
+    {
+      "id": "order-twin-price-variance",
+      "type": "adversarial_twin",
+      "title": "Unit price exceeds 1% PO tolerance",
+      "invoice": {"quantity": 12, "unitPrice": 185, "receivedQuantity": 12, "serviceQuantity": 0, "serviceUnitPrice": 0},
+      "tolerance": 1,
+      "expected_matched": false
+    }
+  ]
+}

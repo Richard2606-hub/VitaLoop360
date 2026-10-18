@@ -1,0 +1,26 @@
+{
+  "id": "demand",
+  "name": "Demand & Retention Brain",
+  "version": "0.2.0",
+  "track": "Reinvent Commerce",
+  "owner_role": "Demand Planner & Customer Retention Lead",
+  "status": "walkthrough",
+  "subscriptions": [
+    "stock.reallocated"
+  ],
+  "publishes": [
+    "offer.proposed"
+  ],
+  "capabilities": [
+    "simulation",
+    "forecast.holt_winters",
+    "safety_stock.compute",
+    "churn.weibull_rfm",
+    "approval.request"
+  ],
+  "approval_roles": [
+    "Demand Planner",
+    "Customer Retention Lead"
+  ],
+  "documents": []
+}

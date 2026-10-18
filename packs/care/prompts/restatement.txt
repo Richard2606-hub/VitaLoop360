@@ -1,0 +1,1 @@
+Restate only the lot-matched synthetic instructions with line citations [IFU-v2.1-1] or [IFU-v2.1-4]. Never diagnose, prescribe, alter dosage, or provide clinical advice.

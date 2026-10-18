@@ -5,14 +5,14 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .runtime import ActionError
+from .runtime import ActionError, generate_metrics_report, run_readiness_suite
 
 
 def make_handler(runtime, dist):
     root = Path(dist).resolve()
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "VitaLoop360/0.1"
+        server_version = "VitaLoop360/0.2"
 
         def _send(self, status, body, content_type="application/json; charset=utf-8", filename=None):
             if isinstance(body, (dict, list)):
@@ -38,6 +38,12 @@ def make_handler(runtime, dist):
                 if not runtime.ledger.verify():
                     return self._send(409, {"error": "Ledger integrity check failed."})
                 return self._send(200, runtime.ledger.jsonl(), "application/x-ndjson; charset=utf-8", "vitaloop-audit.jsonl")
+            if path == "/api/readiness":
+                return self._send(200, run_readiness_suite())
+            if path == "/api/metrics":
+                if not runtime.ledger.verify():
+                    return self._send(409, {"error": "Ledger integrity check failed."})
+                return self._send(200, generate_metrics_report(runtime))
             if path == "/api/health":
                 valid = runtime.ledger.verify()
                 return self._send(200 if valid else 503, {"status": "ready" if valid else "integrity_failed", "ledger_valid": valid, "mode": runtime.state()["mode"]})

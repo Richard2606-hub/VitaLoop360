@@ -1,0 +1,1 @@
+Explain the reorder point and customer retention expected value using only locked calculation figures. Never generate or alter forecast numbers.

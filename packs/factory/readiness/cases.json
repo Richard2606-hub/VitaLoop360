@@ -1,0 +1,37 @@
+{
+  "pack": "factory",
+  "cases": [
+    {
+      "id": "factory-happy-01",
+      "type": "happy_path",
+      "title": "Deterministic shift calculation and cited explanation",
+      "action": "analyze",
+      "expected_status": "passed",
+      "expected_coverage": 100.0
+    },
+    {
+      "id": "factory-twin-fabricated-saving",
+      "type": "adversarial_twin",
+      "title": "Planted 37% fabricated energy saving draft",
+      "draft": "The proposed oven adjustment will save 37% of energy. [SOP-017-v3.2-4.2]",
+      "expected_status": "rejected",
+      "expected_rule": "unlocked_number"
+    },
+    {
+      "id": "factory-twin-unknown-citation",
+      "type": "adversarial_twin",
+      "title": "Draft citing nonexistent procedure SOP-999-v1.0",
+      "draft": "Shift energy intensity is 0.49 kWh per good unit. [SOP-999-v1.0]",
+      "expected_status": "rejected",
+      "expected_rule": "unresolved_citation"
+    },
+    {
+      "id": "factory-twin-missing-citation",
+      "type": "adversarial_twin",
+      "title": "Draft containing uncited operational claim",
+      "draft": "Shift energy intensity is 0.49 kWh per good unit. [FACT:energy_per_unit] The reflow oven must be recalibrated immediately.",
+      "expected_status": "rejected",
+      "expected_rule": "citation_coverage"
+    }
+  ]
+}

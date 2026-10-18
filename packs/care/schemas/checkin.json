@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SafeCareCheckInResult",
+  "type": "object",
+  "required": ["status", "text", "citations", "agreement"],
+  "properties": {
+    "status": {"type": "string", "enum": ["routine", "review", "refused", "urgent", "out_of_scope"]},
+    "text": {"type": "string"},
+    "citations": {"type": "array", "items": {"type": "string"}},
+    "agreement": {
+      "type": "object",
+      "required": ["score", "label"],
+      "properties": {
+        "score": {"type": "number"},
+        "label": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+Rewrite the onboarding scene for the specified customer context and language using only the approved style bible [BRAND-v1.0-2]. Never make diagnostic, therapeutic, or pain-relief claims.
