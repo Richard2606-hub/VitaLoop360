@@ -381,5 +381,26 @@ class HTTPTests(unittest.TestCase):
                 thread.join(timeout=2)
 
 
+class ProposalCompletenessTests(unittest.TestCase):
+    def test_config_hash_pack_calc_formulas_and_all_five_pack_drafts(self):
+        runtime = Runtime(env={})
+        state = runtime.state()
+        self.assertTrue(len(state.get("config_hash", "")) == 64)
+        manifests = state.get("pack_manifests", {})
+        for pack_id in ("factory", "order", "demand", "experience", "care"):
+            self.assertIn(pack_id, manifests)
+            m = manifests[pack_id]
+            self.assertTrue(m.get("has_calc_formulas"), f"{pack_id} missing calc/formulas.py")
+            self.assertTrue(m.get("has_screens"), f"{pack_id} missing screens.json")
+            self.assertTrue(m.get("has_proposal"), f"{pack_id} missing PROPOSAL.md")
+            self.assertTrue(len(m.get("calc_exports", [])) >= 1)
+            res = runtime.action({"action": "pack_draft", "pack": pack_id})
+            self.assertEqual(res["result"]["verification"]["status"], "passed")
+            self.assertIn(pack_id, res["state"]["pack_drafts"])
+        report = runtime.generate_metrics_report() if hasattr(runtime, "generate_metrics_report") else __import__("backend.runtime", fromlist=["generate_metrics_report"]).generate_metrics_report(runtime)
+        self.assertIn("unit_economics", report)
+        self.assertEqual(report["inference_telemetry"]["mi300x_hourly_assumption_usd"], 1.99)
+
+
 if __name__ == "__main__":
     unittest.main()

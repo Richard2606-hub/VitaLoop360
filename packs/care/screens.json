@@ -1,0 +1,12 @@
+{
+  "pack": "care",
+  "title": "SafeCare Navigator",
+  "status_badge": "Specified walkthrough (Health and Wellbeing)",
+  "panels": [
+    {"id": "lot_bound_ifu", "title": "Lot-bound IFU v2.1 checklist & citations", "type": "ifu_checklist"},
+    {"id": "care_boundary_sandbox", "title": "Multilingual (EN/BM/IT) guard, PII redaction & agreement", "type": "guard_sandbox"},
+    {"id": "nurse_takeover_queue", "title": "Transitional-care nurse review queue", "type": "approval_queue"},
+    {"id": "gemma_ifu_restatement", "title": "Cited multilingual IFU restatement", "type": "verified_draft"}
+  ],
+  "approvals": ["care", "nurse_resolve"]
+}

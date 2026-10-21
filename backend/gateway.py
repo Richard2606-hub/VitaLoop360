@@ -28,6 +28,7 @@ class Gateway:
         self.timeout = min(30, max(1, float(env.get("VITALOOP_TIMEOUT_SECONDS", "25"))))
         self.input_price = self._price(env.get("VITALOOP_INPUT_PRICE_PER_MILLION"))
         self.output_price = self._price(env.get("VITALOOP_OUTPUT_PRICE_PER_MILLION"))
+        self.mi300x_hourly_usd = float(env.get("VITALOOP_MI300X_HOURLY_USD", "1.99"))
         self.semaphore = threading.BoundedSemaphore(6)
         self.lock = threading.RLock()
         self.starts = deque()
@@ -35,6 +36,7 @@ class Gateway:
         self.calls = self.tokens = self.input_tokens = self.output_tokens = 0
         self.cost = 0.0
         self.latency_ms = 0
+        self.latencies = []
         self.successful = False
         self.usage_complete = True
         self.last_error = None
@@ -62,7 +64,41 @@ class Gateway:
         return json.loads(cleaned)
 
     def status(self):
-        return {"configured": self.configured, "provider": self.provider if self.configured else "Deterministic synthetic demo", "model": self.model if self.configured else "No model connected", "endpoint": self.endpoint, "calls": self.calls, "tokens": self.tokens if self.usage_complete else None, "input_tokens": self.input_tokens if self.usage_complete else None, "output_tokens": self.output_tokens if self.usage_complete else None, "cost": round(self.cost, 8) if self.usage_complete and self.input_price is not None and self.output_price is not None else None, "latency_ms": self.latency_ms, "successful": self.successful, "pricing_configured": self.input_price is not None and self.output_price is not None, "usage_available": self.usage_complete, "hardware_verified": False, "last_error": self.last_error, "note": "Hardware/provider names are operator configuration; the app cannot attest which GPU serves an endpoint."}
+        with self.lock:
+            now = time.monotonic()
+            while self.starts and self.starts[0] < now - 60:
+                self.starts.popleft()
+            calls_last_min = len(self.starts)
+            sorted_lat = sorted(self.latencies)
+            p50 = sorted_lat[len(sorted_lat) // 2] if sorted_lat else self.latency_ms
+            p95 = sorted_lat[min(len(sorted_lat) - 1, int(round(0.95 * (len(sorted_lat) - 1))))] if sorted_lat else self.latency_ms
+            total_lat_s = sum(sorted_lat) / 1000.0 if sorted_lat else (self.latency_ms / 1000.0)
+            mi300x_gpu_cost = round(total_lat_s * (self.mi300x_hourly_usd / 3600.0), 6) if self.calls > 0 else 0.0
+        return {
+            "configured": self.configured,
+            "provider": self.provider if self.configured else "Deterministic synthetic demo",
+            "model": self.model if self.configured else "No model connected",
+            "endpoint": self.endpoint,
+            "calls": self.calls,
+            "calls_last_minute": calls_last_min,
+            "rate_limit_rpm": 20,
+            "concurrency_ceiling": 6,
+            "tokens": self.tokens if self.usage_complete else None,
+            "input_tokens": self.input_tokens if self.usage_complete else None,
+            "output_tokens": self.output_tokens if self.usage_complete else None,
+            "cost": round(self.cost, 8) if self.usage_complete and self.input_price is not None and self.output_price is not None else None,
+            "mi300x_gpu_time_cost_usd": mi300x_gpu_cost,
+            "mi300x_hourly_rate_usd": self.mi300x_hourly_usd,
+            "latency_ms": self.latency_ms,
+            "median_latency_ms": p50,
+            "p95_latency_ms": p95,
+            "successful": self.successful,
+            "pricing_configured": self.input_price is not None and self.output_price is not None,
+            "usage_available": self.usage_complete,
+            "hardware_verified": False,
+            "last_error": self.last_error,
+            "note": "Hardware/provider names are operator configuration; the app cannot attest which GPU serves an endpoint.",
+        }
 
     def complete(self, messages, bypass_cache=False):
         if not self.configured:
@@ -104,6 +140,7 @@ class Gateway:
                     with self.lock:
                         self.calls += 1
                         self.latency_ms = elapsed
+                        self.latencies.append(elapsed)
                         self.successful = True
                         self.last_error = None
                         self.usage_complete = self.usage_complete and metered

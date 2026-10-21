@@ -1,0 +1,86 @@
+{
+  "runtime": {
+    "mode": "serve",
+    "input_path": "packs",
+    "output_path": "data/ledger.jsonl",
+    "reference_ledger_path": "data/reference-ledger.jsonl",
+    "request_time_budget_seconds": 25,
+    "seeds": {
+      "isolation_forest": 360,
+      "holt_winters_period": 7
+    }
+  },
+  "gateway": {
+    "provider": "AMD Token Factory (Radeon Cloud)",
+    "base_url": "https://developer.amd.com.cn/radeon/api/v1",
+    "model": "Gemma-4-31B-IT",
+    "self_hosted_model": "google/gemma-4-31b-it",
+    "concurrency_ceiling": 6,
+    "requests_per_minute": 20,
+    "timeout_seconds": 25,
+    "input_price_per_million_usd": 0.0,
+    "output_price_per_million_usd": 0.0,
+    "mi300x_hourly_rate_usd": 1.99
+  },
+  "verification": {
+    "numeric_tolerance_abs": 0.0005,
+    "numeric_tolerance_rel": 0.00001,
+    "coverage_floors_pct": {
+      "factory": 100.0,
+      "order": 100.0,
+      "demand": 100.0,
+      "experience": 100.0,
+      "care": 100.0
+    }
+  },
+  "guard": {
+    "redaction_entities": ["EMAIL", "PHONE", "ID", "ADDRESS", "PERSON"],
+    "deny_list_packs": ["care", "experience"],
+    "escalation_queue_roles": {
+      "factory": ["Shift Supervisor", "Process Engineer", "Quality Reviewer"],
+      "order": ["AP & Order Management Clerk", "Procurement Lead"],
+      "demand": ["Demand Planner", "Customer Retention Lead"],
+      "experience": ["Brand Experience Manager"],
+      "care": ["Transitional-Care Nurse"]
+    }
+  },
+  "retrieval": {
+    "algorithm": "BM25",
+    "k1": 1.5,
+    "b": 0.75,
+    "chunking": "section-heading",
+    "top_k_by_stage": {
+      "factory": 3,
+      "order": 3,
+      "demand": 3,
+      "experience": 2,
+      "care": 2
+    }
+  },
+  "console": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8765,
+    "replay_ledger_path": "data/reference-ledger.jsonl",
+    "approval_roles": [
+      "Shift Supervisor",
+      "Process Engineer",
+      "Quality Reviewer",
+      "AP & Order Management Clerk",
+      "Demand Planner",
+      "Customer Retention Lead",
+      "Brand Experience Manager",
+      "Transitional-Care Nurse"
+    ]
+  },
+  "ledger": {
+    "path": "data/ledger.jsonl",
+    "hash_algorithm": "SHA-256",
+    "materialised_views": [
+      "cost_view",
+      "verification_view",
+      "guard_view",
+      "approvals_view",
+      "lot_view"
+    ]
+  }
+}

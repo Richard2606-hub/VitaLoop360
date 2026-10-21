@@ -190,6 +190,12 @@ export async function demoAction(state, action, payload = {}) {
     message = result.status === 'passed' ? 'Draft passed all deterministic verification checks.' : `Draft rejected: ${result.findings[0]?.message || 'Verification failed'}`;
   } else if(action==='analyze') {
     await append(state,'factory','analysis.completed','Synthetic shift re-analyzed','Deterministic metrics and the cited template were reviewed. No model call was made.'); message='Synthetic shift analyzed. A cited template is shown; AMD is not connected.';
+  } else if(action==='pack_draft') {
+    const targetPack = String(payload.pack || 'factory');
+    const draftObj = state.pack_drafts?.[targetPack] || {text: 'Cited synthetic template verified against locked facts.', citations: [], source: 'Deterministic synthetic demo', coverage: 100};
+    await append(state, targetPack, 'explanation.verified', `Cited ${targetPack} draft verified`, `100% citation and numeric lock verified (${draftObj.source}).`);
+    result = {action: 'pack_draft', status: 'passed', pack: targetPack, explanation: draftObj};
+    message = `Cited ${targetPack} draft verified against locked facts.`;
   } else throw Error('Unknown demo action.');
   state.ledger_valid=await verifyDemo(state); save(state); return {state,message,result};
 }

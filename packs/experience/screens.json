@@ -1,0 +1,12 @@
+{
+  "pack": "experience",
+  "title": "Adaptive Unboxing Studio",
+  "status_badge": "Specified walkthrough (Create a New Kind of Experience)",
+  "panels": [
+    {"id": "audience_comparison", "title": "Side-by-side dual-audience onboarding comparison", "type": "dual_story_preview"},
+    {"id": "style_bible_gate", "title": "Style bible BRAND-v1.0-2 & forbidden-claim gate", "type": "quality_gate"},
+    {"id": "unit_economics_meter", "title": "Measured session cost & payer attribution", "type": "cost_meter"},
+    {"id": "gemma_story_rewrite", "title": "Live Gemma-4-31B-IT contextual scene rewrite", "type": "verified_draft"}
+  ],
+  "approvals": ["experience"]
+}

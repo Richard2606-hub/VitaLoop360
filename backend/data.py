@@ -1,4 +1,5 @@
-"""Authored, fictional fixtures and pack-folder discovery. These are not imported public or plant data."""
+"""Authored, fictional fixtures, configuration loader, and pack-folder discovery."""
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -14,6 +15,8 @@ DOCUMENTS = [
     {"id": "SOP-017-v3.2-4.3", "pack": "factory", "title": "Containment and quality release", "version": "3.2", "section": "4.3", "text": "SYNTHETIC PROCEDURE — fictional demonstration only. The supervisor may place the affected lot on hold pending profile verification and calibration review. Only a named quality reviewer may release a held lot after corrective work and evidence are recorded. No machine parameter changes are made by VitaLoop."},
     {"id": "SOP-024-v1.4-2.1", "pack": "factory", "title": "Idle-load and compressed-air inspection", "version": "1.4", "section": "2.1", "text": "SYNTHETIC PROCEDURE — fictional demonstration only. Review idle-load intervals and inspect for air leaks, standby equipment and incomplete shutdown. A supervisor must approve the work order. Do not claim a confirmed root cause or realized savings before a measured follow-up."},
     {"id": "TERMS-008-v1.0-3", "pack": "order", "title": "Supplier service authorization", "version": "1.0", "section": "3", "text": "SYNTHETIC TERMS. Services not listed on the purchase order require written buyer approval before invoice payment. Disputed invoice lines are referred to the supplier; payment is never autonomous."},
+    {"id": "RETAIL-v1.0-1", "pack": "demand", "title": "Reorder and safety-stock policy", "version": "1.0", "section": "1", "text": "SYNTHETIC DEMAND POLICY. Regional pharmacy hubs maintain a 95% service-level target over a 10-day replenishment lead time. Forecasts are computed by additive Holt-Winters smoothing backtested against a seasonal naive baseline, never by a language model."},
+    {"id": "RETAIL-v1.0-2", "pack": "demand", "title": "Replacement delay retention policy", "version": "1.0", "section": "2", "text": "SYNTHETIC RETENTION POLICY. Customers delayed by 7 or more days enter the high-priority retention cohort. Retention offers require positive expected net value and explicit human planner approval."},
     {"id": "BRAND-v1.0-2", "pack": "experience", "title": "Lumora style and claims guide", "version": "1.0", "section": "2", "text": "SYNTHETIC BRAND GUIDE. Use calm, practical language. Acknowledge replacement delays. Never promise healing, treatment or a clinical outcome. Include a link to the lot-matched instructions. A brand reviewer approves each experience."},
     {"id": "IFU-v2.1-1", "pack": "care", "title": "LumaBand kit instructions — sample", "version": "2.1", "section": "1", "text": "SYNTHETIC INSTRUCTIONS, not clinical guidance. For the fictional kit: confirm that the lot on the box matches the supplied instructions; keep the instruction leaflet and clinic contact information accessible. Follow the instructions supplied by your actual care team."},
     {"id": "IFU-v2.1-4", "pack": "care", "title": "When to contact the care team — sample", "version": "2.1", "section": "4", "text": "SYNTHETIC INSTRUCTIONS, not clinical guidance. In this fictional workflow, reported skin irritation, persistent discomfort or a damaged strap is routed for nurse review. This application cannot diagnose a symptom or decide treatment. No nurse or emergency service is contacted by this demonstration."},
@@ -118,6 +121,48 @@ def telemetry():
     return rows
 
 
+def load_config(config_path=None):
+    """Read config.json and return (config_dict, sha256_config_hash)."""
+    if config_path is None:
+        config_path = Path(__file__).resolve().parents[1] / "config.json"
+    else:
+        config_path = Path(config_path)
+    if config_path.is_file():
+        raw = config_path.read_text(encoding="utf-8")
+        cfg = json.loads(raw)
+    else:
+        cfg = {"runtime": {"mode": "serve"}, "gateway": {"mi300x_hourly_rate_usd": 1.99}}
+    canonical = json.dumps(cfg, sort_keys=True, separators=(",", ":"))
+    return cfg, hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _load_restricted_calc(calc_file):
+    """Load a pack's deterministic calculation module in a restricted namespace (Proposal §7)."""
+    if not calc_file.is_file():
+        return []
+    allowed_modules = {"math": math}
+    def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name in allowed_modules:
+            return allowed_modules[name]
+        raise ImportError(f"Pack calc module {calc_file.name} imports disallowed module: {name}")
+    safe_builtins = {
+        "__import__": _safe_import,
+        "round": round, "min": min, "max": max, "sum": sum, "abs": abs, "len": len,
+        "float": float, "int": int, "bool": bool, "str": str, "dict": dict, "list": list,
+        "set": set, "tuple": tuple, "enumerate": enumerate, "range": range, "zip": zip,
+        "sorted": sorted, "any": any, "all": all,
+    }
+    namespace = {"__builtins__": safe_builtins, "math": math}
+    source = calc_file.read_text(encoding="utf-8")
+    compile(source, str(calc_file), "exec")
+    for line in source.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("import ") and stripped != "import math":
+            raise ValueError(f"Pack calc module {calc_file.name} imports disallowed module: {stripped}")
+    exec(source, namespace)  # noqa: S102 - trusted pack calc module in restricted namespace
+    return sorted(k for k, v in namespace.items() if callable(v) and not k.startswith("_"))
+
+
 def discover_pack_folders(packs_root=None):
     """Inspect installable pack folders under packs/ and return validated metadata."""
     if packs_root is None:
@@ -138,6 +183,10 @@ def discover_pack_folders(packs_root=None):
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             rules_path = folder / "rules.json"
+            screens_path = folder / "screens.json"
+            proposal_path = folder / "PROPOSAL.md"
+            calc_path = folder / "calc" / "formulas.py"
+            calc_doc_path = folder / "calc" / "FORMULAS.md"
             readiness_path = folder / "readiness" / "cases.json"
             schemas_dir = folder / "schemas"
             prompts_dir = folder / "prompts"
@@ -145,15 +194,24 @@ def discover_pack_folders(packs_root=None):
             manifest["folder"] = str(folder.name)
             manifest["has_rules"] = rules_path.is_file()
             manifest["has_readiness"] = readiness_path.is_file()
+            manifest["has_calc"] = calc_path.is_file() and calc_doc_path.is_file()
+            manifest["has_calc_formulas"] = manifest["has_calc"]
+            manifest["has_screens"] = screens_path.is_file()
+            manifest["has_proposal"] = proposal_path.is_file()
+            calc_fns = _load_restricted_calc(calc_path)
+            manifest["calc_functions"] = calc_fns
+            manifest["calc_exports"] = calc_fns
             manifest["schemas"] = sorted(p.name for p in schemas_dir.glob("*.json")) if schemas_dir.is_dir() else []
             manifest["prompts"] = sorted(p.name for p in prompts_dir.glob("*.txt")) if prompts_dir.is_dir() else []
             manifest["doc_files"] = sorted(p.name for p in docs_dir.glob("*.md")) if docs_dir.is_dir() else []
+            if screens_path.is_file():
+                manifest["screens"] = json.loads(screens_path.read_text(encoding="utf-8"))
             if readiness_path.is_file():
                 cases_payload = json.loads(readiness_path.read_text(encoding="utf-8"))
                 manifest["readiness_cases"] = cases_payload.get("cases", [])
             if rules_path.is_file():
                 manifest["rules"] = json.loads(rules_path.read_text(encoding="utf-8"))
             discovered.append(manifest)
-        except (OSError, ValueError, TypeError) as exc:
+        except (OSError, ValueError, TypeError, SyntaxError) as exc:
             discovered.append({"id": folder.name, "name": folder.name, "status": "quarantined", "reason": f"Malformed pack folder artefact: {exc}"})
     return discovered

@@ -1,0 +1,12 @@
+{
+  "pack": "order",
+  "title": "Compliance & Order Hub",
+  "status_badge": "Specified walkthrough (Evolus Business Agents)",
+  "panels": [
+    {"id": "multilingual_docs", "title": "Multilingual document evidence (IT/EN/BM)", "type": "document_cards"},
+    {"id": "three_way_match", "title": "Three-way match & tolerance calculator", "type": "interactive_calculator"},
+    {"id": "stock_reallocation", "title": "Reserve lot 2610-05 reallocation", "type": "allocation_table"},
+    {"id": "gemma_dispute_draft", "title": "Cited supplier dispute draft", "type": "verified_draft"}
+  ],
+  "approvals": ["order"]
+}

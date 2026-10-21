@@ -1,0 +1,12 @@
+{
+  "pack": "demand",
+  "title": "Demand & Retention Brain",
+  "status_badge": "Specified walkthrough (Reinvent Commerce)",
+  "panels": [
+    {"id": "holt_winters_backtest", "title": "Holt-Winters vs. Seasonal Naive backtest", "type": "forecast_table"},
+    {"id": "rop_calculator", "title": "Safety-stock & reorder-point formula", "type": "interactive_calculator"},
+    {"id": "rfm_weibull_cohorts", "title": "RFM segmentation & Weibull survival churn", "type": "cohort_table"},
+    {"id": "gemma_offer_draft", "title": "Cited retention offer & PO narrative", "type": "verified_draft"}
+  ],
+  "approvals": ["offer"]
+}

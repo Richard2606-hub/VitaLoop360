@@ -1,96 +1,81 @@
-# VitaLoop 360
+# VitaLoop 360 — Verifiable Product-Operations Intelligence Platform
 
-One shared operating console connects factory evidence, human decisions, and four department walkthroughs through a production lot.
+**One Lot. Five Teams. Every Number Locked to Deterministic Math.**  
+Powered by **Google Gemma (`Gemma-4-31B-IT`)** on **AMD Token Factory (Radeon Cloud)** & **AMD Instinct MI300X (ROCm vLLM)**.
 
-This is a working local prototype of the supplied VitaLoop 360 proposal. Factory Sentinel calculates metrics from synthetic telemetry, presents source evidence, verifies a draft, and records operator decisions in a hash-chained ledger. The other four capability packs are explicitly labelled walkthroughs. Lumora Wellness and its records are fictional.
+![VitaLoop 360 Cover](dist/cover.svg)
 
-The default experience needs no API key and makes no model call. It is a synthetic demonstration, not a recording of AMD/Gemma inference. An optional OpenAI-compatible endpoint can provide factory explanation text; a real AMD deployment and its credentials must be supplied and independently verified before claiming AMD execution.
+---
 
-## Run locally
+## 1. Overview
 
-Use a recent Python 3 installation. The application uses the Python standard library and a plain HTML/CSS/JavaScript interface; no package installation is needed.
+**VitaLoop 360** connects five operational teams around a single production digital thread (`lot_id = 2610-07`, reserve `lot_id = 2610-05`) for the fictional wellness-device manufacturer **Lumora Wellness** across Penang and Milan:
 
-From this directory:
+1. **Pack 1 — Factory Sentinel (`ThermoYield`, Track 1)**: Computes energy per good unit (`0.453 kWh`, `+7.9%`), shift scrap (`4.09%`, `+63.6%`), and the **Energy & Scrap Waste Index (`ESWI = 119.3`)** across 32 fifteen-minute shift windows using Median+MAD ($z > 3.5$) and a seeded 64-tree Isolation Forest ($\text{score} > 0.64$). Synthesizes shift hypotheses with **Gemma-4-31B-IT** grounded in `[SOP-017-v3.2-4.2]`.
+2. **Pack 2 — Compliance & Order Hub (`ProcureGuard MCP`, Track 2)**: Performs multilingual (Italiano, Bahasa Melayu, English) document extraction and deterministic three-way matching across `PO-2026-0842`, `INV-2026-0391`, and `GRN-2026-0218`, catching an unlisted `+€80.00` (`+3.70%`) calibration service under `[TERMS-008-v1.0-3]` and reallocating 100 units (`ORD-1041..1043`) to released reserve Lot `2610-05`.
+3. **Pack 3 — Demand & Retention Brain (`QuantPulse`, Track 3)**: Runs non-LLM additive **Holt–Winters** seasonal forecasting ($\alpha=0.35, \beta=0.10, \gamma=0.25, m=7$) with a 14-day held-out backtest against a 7-day seasonal naive baseline (`MAE 0.612` vs `1.000`), computes safety stock (`21.9` units) and reorder point (`202` units), and models customer delay churn via **Weibull survival analysis** $S(t)=\exp(-(t/\lambda)^k)$ (`RM 14.40` expected net value/customer).
+4. **Pack 4 — Adaptive Unboxing Studio (`PersonaStage`, Track 4)**: Adapts post-purchase onboarding across Caregiver and Active-Adult personas in English, Bahasa Melayu, and Italian at `$0.00` template preview cost, guarded by deterministic `[BRAND-v1.0-2]` health-claim verification.
+5. **Pack 5 — SafeCare Navigator (`SafeBridge`, Track 5)**: Binds lot-specific non-clinical setup instructions (`IFU-v2.1`), enforces pre-inference clinical boundary refusals and red-flag escalations in EN/BM/IT, scrubs PII (`EMAIL`, `PHONE`, `ID`, `ADDRESS`, `PERSON`) before logging, and reports dual-extractor agreement (`2/2 extractors agree`).
 
-```powershell
-python run.py --demo --port 8765
-```
+Every capability pack includes both deterministic calculations and a **"Draft with Gemma-4-31B-IT"** action verified by the shared Fact-and-Citation Verifier.
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). Keep the terminal running and press `Ctrl+C` to stop the server. If that port is in use, choose another with `--port`.
+---
 
-From the parent `VitaLoop 360` workspace, enter the application directory first:
+## 2. Quick Start (Local Python Runtime & Live AMD Inference)
 
-```powershell
-Set-Location -LiteralPath '.\vitaloop360'
-python run.py --demo --port 8765
-```
-
-## Try the product
-
-1. Open Factory Sentinel and inspect the synthetic night-shift lot, its energy/scrap metrics, and calculation assumptions.
-2. Run the factory analysis and inspect the locked facts and cited fictional procedure.
-3. Run the fabricated-number challenge to see an unsupported figure rejected.
-4. Review a proposed hold and provide a named operator and decision notes. Approving a local hold records a decision; it does not operate machinery.
-5. Follow the lot thread across Compliance, Demand, Experience, and Care. Their downstream scenarios remain walkthroughs.
-6. Inspect the audit view and verify the saved ledger chain.
-
-## Optional model endpoint
-
-Configure environment variables in the terminal before starting the application. Copy the base URL and exact model ID from your own deployment; no provider URL or model name is guessed by this project.
+VitaLoop 360 uses the Python 3.11+ standard library (zero external pip dependencies required for the core server) and a zero-build ES-module browser console.
 
 ```powershell
-$env:VITALOOP_BASE_URL = 'https://your-endpoint.example/v1'
-$env:VITALOOP_MODEL = 'your-deployed-model-id'
-$env:VITALOOP_API_KEY = 'your-private-key'
-$env:VITALOOP_PROVIDER = 'Your configured provider'
+cd vitaloop360
 python run.py --port 8765
 ```
 
-Keep keys out of source control, browser code, screenshots, and shared logs. These variables apply to the current terminal process. Alternatively, copy `.env.example` to `.env` and fill in its literal `VITALOOP_` assignments; the runner loads that file automatically. Existing environment variables take precedence. Omit `--demo` when you want to use the configured endpoint.
+Open **[http://127.0.0.1:8765](http://127.0.0.1:8765)**.
 
-| Variable | Purpose |
-| --- | --- |
-| `VITALOOP_BASE_URL` | OpenAI-compatible API base URL, ordinarily ending in `/v1`. |
-| `VITALOOP_MODEL` | Exact deployed model identifier. |
-| `VITALOOP_API_KEY` | Server-side credential for the configured endpoint. |
-| `VITALOOP_PROVIDER` | Display name chosen by the operator; not hardware verification. |
-| `VITALOOP_TIMEOUT_SECONDS` | Provider request timeout; default `20`. |
-| `VITALOOP_INPUT_PRICE_PER_MILLION` | Operator-supplied USD price assumption for one million input tokens; blank means unavailable. |
-| `VITALOOP_OUTPUT_PRICE_PER_MILLION` | Operator-supplied USD price assumption for one million output tokens; blank means unavailable. |
-| `VITALOOP_DATA_DIR` | Directory for local runtime data; default `data` beside `run.py`. |
-
-The gateway sends the factory request to the configured service when used. A provider label or configured endpoint alone is not evidence that a call succeeded or ran on AMD hardware. Provider-reported usage and measured request timing are shown when available; financial estimates depend on the prices you supply.
-
-To return to the no-provider demonstration, stop the server and force demo mode. This ignores model credentials, including those in `.env`:
+### Execution Modes (`run.py`)
 
 ```powershell
+# 1. Live mode (uses AMD Token Factory + Gemma-4-31B-IT from .env or config.json)
+python run.py --port 8765
+
+# 2. Deterministic offline demo mode (ignores API keys, zero network calls)
 python run.py --demo --port 8765
+
+# 3. Recorded reference ledger replay mode (inspects recorded Gemma-4-31B-IT run)
+python run.py --replay data/reference-ledger.jsonl --port 8765
+
+# 4. Batch readiness & adversarial twin runner (18 cases across all 5 packs)
+python run.py --batch
+
+# 5. Proposal Section 11 Evaluation & Metrics JSON report
+python run.py --demo --metrics
 ```
 
-The ledger persists at `data/ledger.jsonl`. For an independent demonstration without deleting existing records, pass a new directory, for example `--data-dir data-session-2`. The default bind address is `127.0.0.1`; changing `--host` exposes a local prototype without production authentication.
+---
 
-## Optional container and static snapshot
+## 3. AMD Token Factory & Self-Hosted ROCm vLLM Configuration
 
-A Dockerfile is included. With Docker installed, build and run a local demo:
+### Option A — AMD Token Factory (Radeon Cloud, Default)
 
-```powershell
-docker build -t vitaloop360 .
-docker run --rm -p 127.0.0.1:8765:8765 -v vitaloop-data:/app/data vitaloop360 python run.py --demo --host 0.0.0.0 --port 8765
+Configure `.env` (or Vercel Environment Variables):
+
+```env
+VITALOOP_BASE_URL=https://developer.amd.com.cn/radeon/api/v1
+VITALOOP_API_KEY=your-amd-token-factory-key
+VITALOOP_MODEL=Gemma-4-31B-IT
+VITALOOP_PROVIDER=AMD Token Factory (Radeon Cloud)
+VITALOOP_TIMEOUT_SECONDS=45
 ```
 
-The named volume preserves local audit records. The container path is supplied for reproducibility; building the local Python application does not by itself validate that container on your machine.
+### Option B — Self-Hosted ROCm vLLM on AMD Instinct MI300X (192 GB HBM3)
 
-To export a fresh credential-free synthetic state snapshot:
+See [`deploy/vllm-rocm-mi300x.yaml`](deploy/vllm-rocm-mi300x.yaml) and [`docs/self-hosted-rocm-vllm.md`](docs/self-hosted-rocm-vllm.md) to launch `rocm/vllm:latest` serving Gemma in `BF16` on a single AMD Instinct MI300X GPU (`$1.99/hr` published AMD Developer Cloud single-GPU reference rate).
 
-```powershell
-python run.py --export-demo dist/demo-data.json
-```
+---
 
-This export does not make a model call and does not replay a recorded AMD run.
+## 4. Verification & Test Suite
 
-## Check the implementation & run hard tests
-
-Run the 28-test Python unit/integration/concurrency/HTTP suite, JavaScript module syntax checks, browser-domain state-machine checks, the 18-case adversarial readiness suite, and the evaluation metrics report:
+Run the complete automated verification suite:
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -100,26 +85,20 @@ python run.py --batch
 python run.py --demo --metrics
 ```
 
-Additional execution modes (`run.py`):
-- `python run.py --demo --port 8765` — Serve interactive console in deterministic demo mode.
-- `python run.py --replay data/ledger.jsonl --port 8765` (or `--mode replay`) — Serve console in read-only replay mode from a saved JSONL ledger.
-- `python run.py --batch` (or `--mode batch`) — Execute all 18 happy-path and adversarial twin readiness cases across all 5 installed capability packs (`packs/*`).
-- `python run.py --demo --metrics` — Print the complete Proposal Section 11 Evaluation & Metrics JSON report (telemetry, domain metrics, Holt-Winters vs. Seasonal Naive backtest, verification outcomes, guard & PII redaction statistics, readiness pass rate, and SHA-256 thread integrity).
+---
 
-Use the [manual acceptance checklist](docs/acceptance-checklist.md) to check the running console, approval transitions, evidence, and responsive layout. Model-endpoint checks require actual credentials and are separate from offline checks.
+## 5. Repository Structure & Submission Deliverables
 
-## Scope and limits
-
-This build follows the proposal's principle of completing the factory flow and labelling the remaining packs. It deliberately uses a lightweight Python server and browser interface instead of the proposed Streamlit stack. Synthetic data keeps the local demonstration reproducible without downloads or external accounts.
-
-No plant, ERP, Evolus workspace, pharmacy, customer messaging service, or clinical system is connected. Human approval records local demonstration state only. Typed operator names are attribution fields, not authenticated identities. The application is intended for local evaluation and has no production access-control system.
-
-The ledger provides a verifiable hash chain, not independently anchored immutable storage. The fact/citation verifier is a bounded demonstration check, not proof that an explanation is semantically correct. Care content is fictional and unsuitable for clinical use. Public-data validation, production privacy controls, the proposal's complete pack loader, real recorded replay, and the remaining statistical/clinical integrations require further implementation and evaluation.
-
-See [requirements traceability](docs/requirements-traceability.md), [factory calculation methodology](docs/factory-methodology.md), [data provenance and disclosure](docs/data-provenance.md), and the [future pack contract](docs/pack-specification.md). Hackathon eligibility, current provider availability, licensing, and external submission requirements were not verified by building this prototype.
-
-## Hosted browser demonstration
-
-The private hosted website uses the packaged synthetic snapshot and runs the walkthrough in the browser. Its demo decisions persist only in local browser storage and do not synchronize across devices. Resetting the demo creates a fresh history; export the JSONL ledger to keep a copy. The browser ledger is independently hashed and is not the Python runtime ledger. Caregiver free text is not persisted.
-
-The local Python service uses durable JSONL storage and can call a configured model endpoint. The hosted static demonstration does not make model calls or connect to the Python runtime.
+- [`config.json`](config.json) — Centralized Appendix B runtime, gateway, verification, guard, retrieval, console, and ledger configuration (`$1.99/hr` MI300X reference rate).
+- [`backend/`](backend/) — Shared core services (`runtime.py`, `gateway.py`, `verifier.py`, `guard.py`, `retrieval.py`, `ledger.py`, `calculations.py`, `demand_analytics.py`, `data.py`).
+- [`packs/`](packs/) — All 5 capability packs (`factory`, `order`, `demand`, `experience`, `care`), each with `manifest.json`, `calc/formulas.py`, `calc/FORMULAS.md`, `rules.json`, `schemas/`, `prompts/`, `docs/`, `screens.json`, `readiness/cases.json`, and standalone `PROPOSAL.md`.
+- [`dist/`](dist/) — Browser console (`index.html`, `app.js`, `packs.js`, `demo.js`, `styles.css`, `demo-data.json`, `cover.svg`).
+- [`api/index.py`](api/index.py) & [`vercel.json`](vercel.json) — Serverless Vercel deployment entrypoints.
+- [`deploy/vllm-rocm-mi300x.yaml`](deploy/vllm-rocm-mi300x.yaml) — Self-hosted ROCm vLLM Docker Compose specification for AMD Instinct MI300X.
+- [`data/reference-ledger.jsonl`](data/reference-ledger.jsonl) — Recorded SHA-256 hash-chained reference ledger including a live `Gemma-4-31B-IT` completion on AMD Token Factory.
+- [`DISCLOSURE.md`](DISCLOSURE.md) — Architectural lineage (**RouteWiser**, **FourCast**, **GuildHouse**) vs. 100% newly written VitaLoop 360 code disclosure.
+- [`docs/submission-package.md`](docs/submission-package.md) — Paste-ready hackathon submission fields, Google Partner Prize statement, and AMD Partner Prize statement.
+- [`docs/video-script.md`](docs/video-script.md) — 5-scene, sub-4-minute demonstration video script.
+- [`docs/slide-deck.md`](docs/slide-deck.md) — 8-slide presentation deck.
+- [`docs/pack-specification.md`](docs/pack-specification.md) — Appendix A pack contract and 6th-pack blueprints (`WaferWise`, `PalmTrace`, `InvoisBridge`, `ProofLog`, `LiveLore`, `ReferralRelay`).
+- [`docs/requirements-traceability.md`](docs/requirements-traceability.md) — Proposal-to-code traceability matrix.

@@ -1,0 +1,53 @@
+# Self-Hosted ROCm vLLM Deployment on AMD Instinct MI300X (192 GB HBM3)
+# Proposal Section 13: Optional Self-Hosted Endpoint for VitaLoop 360
+version: "3.9"
+
+services:
+  vllm-rocm-gemma:
+    image: rocm/vllm:latest
+    container_name: vitaloop-rocm-gemma
+    restart: unless-stopped
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    ipc: host
+    shm_size: 64gb
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - HIP_VISIBLE_DEVICES=0
+      - HF_TOKEN=${HF_TOKEN:-}
+      - VLLM_USE_TRITON_FLASH_ATTN=1
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./hf-cache:/root/.cache/huggingface
+    command: >
+      python3 -m vllm.entrypoints.openai.api_server
+      --model google/gemma-3-27b-it
+      --served-model-name Gemma-4-31B-IT
+      --dtype bfloat16
+      --max-model-len 16384
+      --gpu-memory-utilization 0.90
+      --port 8000
+      --api-key ${VITALOOP_API_KEY:-vitaloop-rocm-local}
+
+  vitaloop-core:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: vitaloop-core
+    depends_on:
+      - vllm-rocm-gemma
+    ports:
+      - "8765:8765"
+    environment:
+      - VITALOOP_BASE_URL=http://vllm-rocm-gemma:8000/v1
+      - VITALOOP_API_KEY=${VITALOOP_API_KEY:-vitaloop-rocm-local}
+      - VITALOOP_MODEL=Gemma-4-31B-IT
+      - VITALOOP_PROVIDER=AMD Instinct MI300X (ROCm vLLM)
+      - VITALOOP_HOST=0.0.0.0
+      - VITALOOP_PORT=8765

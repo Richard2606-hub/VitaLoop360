@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="VitaLoop 360: Verifiable Product-Operations Intelligence on Google Gemma and AMD">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d2b22"/>
+      <stop offset="55%" stop-color="#273c2f"/>
+      <stop offset="100%" stop-color="#192822"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a8cf97"/>
+      <stop offset="100%" stop-color="#58b09c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1020" cy="140" r="240" fill="#8fb883" opacity="0.08"/>
+  <circle cx="180" cy="520" r="260" fill="#58b09c" opacity="0.08"/>
+  <g transform="translate(80, 78)">
+    <rect x="0" y="0" width="290" height="36" rx="18" fill="#2e4738" stroke="#6d9568" stroke-width="1"/>
+    <circle cx="22" cy="18" r="5" fill="#b9d8a6"/>
+    <text x="38" y="23" fill="#d7e7ce" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="1.4">GEMMA-4-31B-IT ON AMD TOKEN FACTORY</text>
+    <text x="0" y="110" fill="#f5f8f2" font-family="Inter, system-ui, sans-serif" font-size="64" font-weight="700" letter-spacing="-2">VitaLoop 360</text>
+    <text x="0" y="160" fill="#b9d8a6" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="500">One Lot. Five Teams. Every Number Locked to Deterministic Math.</text>
+    <text x="0" y="210" fill="#b2c2b4" font-family="Inter, system-ui, sans-serif" font-size="18">Verifiable product-operations intelligence across Factory, Orders, Demand, Experience, and SafeCare —</text>
+    <text x="0" y="238" fill="#b2c2b4" font-family="Inter, system-ui, sans-serif" font-size="18">connected by a SHA-256 hash-chained digital thread (<tspan fill="#eef5ea" font-family="monospace">lot_id = 2610-07</tspan>).</text>
+  </g>
+  <g transform="translate(80, 360)">
+    <rect x="0" y="0" width="192" height="118" rx="14" fill="#25392d" stroke="#4c6e56"/>
+    <text x="20" y="34" fill="#9fc493" font-family="monospace" font-size="12" font-weight="700">PACK 01 · TRACK 1</text>
+    <text x="20" y="64" fill="#ffffff" font-family="Inter, sans-serif" font-size="18" font-weight="600">Factory Sentinel</text>
+    <text x="20" y="92" fill="#b6c6b8" font-family="Inter, sans-serif" font-size="13">ESWI 119.3 · MAD + IForest</text>
+
+    <rect x="212" y="0" width="192" height="118" rx="14" fill="#25392d" stroke="#4c6e56"/>
+    <text x="232" y="34" fill="#9fc493" font-family="monospace" font-size="12" font-weight="700">PACK 02 · TRACK 2</text>
+    <text x="232" y="64" fill="#ffffff" font-family="Inter, sans-serif" font-size="18" font-weight="600">Order Hub</text>
+    <text x="232" y="92" fill="#b6c6b8" font-family="Inter, sans-serif" font-size="13">3-Way Match · +€80 Caught</text>
+
+    <rect x="424" y="0" width="192" height="118" rx="14" fill="#25392d" stroke="#4c6e56"/>
+    <text x="444" y="34" fill="#9fc493" font-family="monospace" font-size="12" font-weight="700">PACK 03 · TRACK 3</text>
+    <text x="444" y="64" fill="#ffffff" font-family="Inter, sans-serif" font-size="18" font-weight="600">Demand Brain</text>
+    <text x="444" y="92" fill="#b6c6b8" font-family="Inter, sans-serif" font-size="13">Holt-Winters · Weibull Churn</text>
+
+    <rect x="636" y="0" width="192" height="118" rx="14" fill="#25392d" stroke="#4c6e56"/>
+    <text x="656" y="34" fill="#9fc493" font-family="monospace" font-size="12" font-weight="700">PACK 04 · TRACK 4</text>
+    <text x="656" y="64" fill="#ffffff" font-family="Inter, sans-serif" font-size="18" font-weight="600">Unboxing Studio</text>
+    <text x="656" y="92" fill="#b6c6b8" font-family="Inter, sans-serif" font-size="13">EN / BM / IT · $0.00 Preview</text>
+
+    <rect x="848" y="0" width="192" height="118" rx="14" fill="#25392d" stroke="#4c6e56"/>
+    <text x="868" y="34" fill="#9fc493" font-family="monospace" font-size="12" font-weight="700">PACK 05 · TRACK 5</text>
+    <text x="868" y="64" fill="#ffffff" font-family="Inter, sans-serif" font-size="18" font-weight="600">SafeCare Nav</text>
+    <text x="868" y="92" fill="#b6c6b8" font-family="Inter, sans-serif" font-size="13">IFU Lock · PII Redacted</text>
+  </g>
+  <g transform="translate(80, 525)">
+    <rect x="0" y="0" width="1040" height="46" rx="10" fill="#18251d" stroke="#3c5945"/>
+    <text x="22" y="29" fill="#d7e7ce" font-family="monospace" font-size="14">18/18 Readiness &amp; Adversarial Twin Cases Passed · 0% Unsupported Claim Escape · SHA-256 Audit Chain Verified</text>
+  </g>
+</svg>

@@ -4,6 +4,7 @@ __pycache__/
 .env.*
 !.env.example
 data/*.jsonl
+!data/reference-ledger.jsonl
 data/*.tmp
 .venv/
 

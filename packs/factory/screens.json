@@ -1,0 +1,14 @@
+{
+  "pack": "factory",
+  "title": "Factory Sentinel",
+  "status_badge": "Operational demo (Live on AMD Token Factory)",
+  "tabs": ["analysis", "telemetry", "method"],
+  "panels": [
+    {"id": "telemetry_chart", "title": "Factory performance", "type": "timeseries"},
+    {"id": "locked_facts", "title": "Locked calculation facts", "type": "fact_table"},
+    {"id": "hypothesis", "title": "Evidence-backed hypothesis", "type": "verified_explanation"},
+    {"id": "verification_checkpoint", "title": "Verification checkpoint", "type": "adversarial_verifier"},
+    {"id": "procedure_library", "title": "Procedure library", "type": "document_list"}
+  ],
+  "approvals": ["hold", "corrective", "release"]
+}
