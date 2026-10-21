@@ -83,6 +83,16 @@ class Ledger:
     def jsonl(self):
         return "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in self.records)
 
+    def reset(self, records=None):
+        with self.lock:
+            self.records = [json.loads(json.dumps(r, ensure_ascii=False)) for r in (records or [])]
+            if self.path:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                content = "".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n" for r in self.records)
+                self.path.write_text(content, encoding="utf-8")
+            if self.records and not self.verify():
+                raise LedgerIntegrityError("Reset ledger records failed hash-chain verification.")
+
     def views(self):
         """Materialise the four Proposal Module 6 views: cost_view, verification_view, approvals_view, lot_view."""
         with self.lock:

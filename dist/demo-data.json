@@ -490,7 +490,7 @@
   "events": [
     {
       "id": "evt-00001",
-      "time": "2026-10-21T16:33:08.441+00:00",
+      "time": "2026-10-21T16:53:00.747+00:00",
       "pack": "core",
       "type": "runtime.ready",
       "lot": "2610-07",
@@ -500,11 +500,11 @@
       "mode": "demo",
       "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
       "config_hash": "703eb5fa9ab685ca72260492aa0d73251e64b823ed65ebe8f3afd76d6e95cb9b",
-      "hash": "0fe9d9cc6751f74f2f98417153862c9e9f8f590bcf64588cb4a0f4ad48c2ed1b"
+      "hash": "c57efad2c11d05e74559e442f00341e81485420ea4ba522e3808e07edfb7f786"
     },
     {
       "id": "evt-00002",
-      "time": "2026-10-21T16:33:08.441+00:00",
+      "time": "2026-10-21T16:53:00.747+00:00",
       "pack": "factory",
       "type": "telemetry.loaded",
       "lot": "2610-07",
@@ -512,7 +512,7 @@
       "detail": "32 authored fifteen-minute windows; metrics calculated deterministically.",
       "actor": "System",
       "mode": "demo",
-      "previous_hash": "0fe9d9cc6751f74f2f98417153862c9e9f8f590bcf64588cb4a0f4ad48c2ed1b",
+      "previous_hash": "c57efad2c11d05e74559e442f00341e81485420ea4ba522e3808e07edfb7f786",
       "metrics": {
         "energy_per_unit": 0.483,
         "scrap_rate": 4.09,
@@ -528,11 +528,11 @@
         "tariff": 0.48,
         "anomaly_count": 9
       },
-      "hash": "8d225d8c45ca0f175b5d3513276a52b3005a0d73f10c2cd65b0321bf87c3df21"
+      "hash": "0f50732203f6a8b47c73faf7a1b7bebfd54aef4c72569abb6b8e298b4f9d8ca2"
     },
     {
       "id": "evt-00003",
-      "time": "2026-10-21T16:33:08.441+00:00",
+      "time": "2026-10-21T16:53:00.747+00:00",
       "pack": "factory",
       "type": "anomaly.flagged",
       "lot": "2610-07",
@@ -540,7 +540,7 @@
       "detail": "9 flagged windows; profile drift is an unconfirmed hypothesis. Supervisor review required.",
       "actor": "System",
       "mode": "demo",
-      "previous_hash": "8d225d8c45ca0f175b5d3513276a52b3005a0d73f10c2cd65b0321bf87c3df21",
+      "previous_hash": "0f50732203f6a8b47c73faf7a1b7bebfd54aef4c72569abb6b8e298b4f9d8ca2",
       "metrics": {
         "energy_per_unit": 0.483,
         "scrap_rate": 4.09,
@@ -556,7 +556,7 @@
         "tariff": 0.48,
         "anomaly_count": 9
       },
-      "hash": "08be6646b971a5e4757225e7214b58709b9b1585f617ad971fd996e4a251dca9"
+      "hash": "f9e7a00d2fa2f67bb822a71992cb0a4b5d666d4e2d5a26630377d9195598feef"
     }
   ],
   "approvals": [
@@ -2196,6 +2196,7 @@
     }
   },
   "explanation": {
+    "title": "Shift Excursion & Thermal Profile Hypothesis",
     "text": "Shift energy intensity is 0.483 kWh per good unit, 15.0% above the authored baseline. [FACT:energy_per_unit] [FACT:energy_delta]\nAn unverified thermal profile after element replacement is one possible explanation, not a confirmed root cause; request the process engineer's profile record. [SOP-017-v3.2-4.2]\nReview idle-load intervals and inspect standby equipment before proposing corrective work; savings remain unmeasured. [SOP-024-v1.4-2.1]",
     "citations": [
       "FACT:energy_per_unit",
@@ -2203,10 +2204,15 @@
       "SOP-017-v3.2-4.2",
       "SOP-024-v1.4-2.1"
     ],
-    "source": "Deterministic synthetic demo"
+    "source": "Deterministic synthetic demo",
+    "verification": {
+      "status": "passed",
+      "coverage": 100.0
+    }
   },
   "pack_drafts": {
     "factory": {
+      "title": "Shift Excursion & Thermal Profile Hypothesis",
       "text": "Shift energy intensity is 0.483 kWh per good unit, 15.0% above the authored baseline. [FACT:energy_per_unit] [FACT:energy_delta]\nAn unverified thermal profile after element replacement is one possible explanation, not a confirmed root cause; request the process engineer's profile record. [SOP-017-v3.2-4.2]\nReview idle-load intervals and inspect standby equipment before proposing corrective work; savings remain unmeasured. [SOP-024-v1.4-2.1]",
       "citations": [
         "FACT:energy_per_unit",
@@ -2214,9 +2220,14 @@
         "SOP-017-v3.2-4.2",
         "SOP-024-v1.4-2.1"
       ],
-      "source": "Deterministic synthetic demo"
+      "source": "Deterministic synthetic demo",
+      "verification": {
+        "status": "passed",
+        "coverage": 100.0
+      }
     },
     "order": {
+      "title": "Supplier Invoice Exception & Reserve Reallocation Memo",
       "text": "Approved purchase order total is 2160.0 EUR while the supplier invoice bills 2240.0 EUR. [FACT:po_total_eur] [FACT:invoice_total_eur]\nThe 80.0 EUR unlisted calibration service requires written buyer approval before payment; reallocate 100 units from released reserve stock pending clerk review. [FACT:unlisted_service_eur] [FACT:reallocated_units] [TERMS-008-v1.0-3]",
       "citations": [
         "FACT:invoice_total_eur",
@@ -2225,9 +2236,14 @@
         "FACT:unlisted_service_eur",
         "TERMS-008-v1.0-3"
       ],
-      "source": "Deterministic synthetic demo"
+      "source": "Deterministic synthetic demo",
+      "verification": {
+        "status": "passed",
+        "coverage": 100.0
+      }
     },
     "demand": {
+      "title": "Holt–Winters Backtest & Retention EV Planner Brief",
       "text": "Additive Holt-Winters backtest MAE is 0.612 compared with 1.0 for the seasonal naive baseline, yielding a safety stock of 21.91 and a reorder point of 202 units. [FACT:hw_mae] [FACT:naive_mae] [FACT:safety_stock] [FACT:reorder_point] [RETAIL-v1.0-1]\nThe retention offer for delayed replacement customers has a positive expected net value of 14.4 RM per customer and requires human planner approval. [FACT:expected_value_rm] [RETAIL-v1.0-2]",
       "citations": [
         "FACT:expected_value_rm",
@@ -2238,18 +2254,28 @@
         "RETAIL-v1.0-1",
         "RETAIL-v1.0-2"
       ],
-      "source": "Deterministic synthetic demo"
+      "source": "Deterministic synthetic demo",
+      "verification": {
+        "status": "passed",
+        "coverage": 100.0
+      }
     },
     "experience": {
+      "title": "Style-Bible Verified Onboarding Copy Draft",
       "text": "We apologize for the 7 day replacement delay and have allocated 100 reserve units so your kit arrives with calm, practical setup guidance. [FACT:delay_days] [FACT:allocated_units] [BRAND-v1.0-2]\nPlease check the printed lot-matched instructions inside your box and await brand reviewer sign-off before publication. [BRAND-v1.0-2]",
       "citations": [
         "BRAND-v1.0-2",
         "FACT:allocated_units",
         "FACT:delay_days"
       ],
-      "source": "Deterministic synthetic demo"
+      "source": "Deterministic synthetic demo",
+      "verification": {
+        "status": "passed",
+        "coverage": 100.0
+      }
     },
     "care": {
+      "title": "Version-Locked IFU v2.1 Non-Clinical Caregiver Summary",
       "text": "Confirm that the lot on your recovery kit box matches the printed leaflet and review the 3 daily checklist items with your care team. [FACT:monitored_items] [IFU-v2.1-1]\nAny reported skin irritation or strap discomfort with 1.0 extractor agreement is routed to a transitional-care nurse rather than diagnosed by software. [FACT:agreement_score] [IFU-v2.1-4]",
       "citations": [
         "FACT:agreement_score",
@@ -2257,9 +2283,14 @@
         "IFU-v2.1-1",
         "IFU-v2.1-4"
       ],
-      "source": "Deterministic synthetic demo"
+      "source": "Deterministic synthetic demo",
+      "verification": {
+        "status": "passed",
+        "coverage": 100.0
+      }
     }
   },
+  "readiness": null,
   "ledger_valid": true,
   "ledger_views": {
     "chain_intact": true,
@@ -2303,36 +2334,36 @@
       "2610-07": [
         {
           "id": "evt-00001",
-          "time": "2026-10-21T16:33:08.441+00:00",
+          "time": "2026-10-21T16:53:00.747+00:00",
           "pack": "core",
           "type": "runtime.ready",
           "title": "Shared core ready",
           "actor": "System",
           "mode": "demo",
           "subscribers": [],
-          "hash": "0fe9d9cc6751f74f2f98417153862c9e9f8f590bcf64588cb4a0f4ad48c2ed1b"
+          "hash": "c57efad2c11d05e74559e442f00341e81485420ea4ba522e3808e07edfb7f786"
         },
         {
           "id": "evt-00002",
-          "time": "2026-10-21T16:33:08.441+00:00",
+          "time": "2026-10-21T16:53:00.747+00:00",
           "pack": "factory",
           "type": "telemetry.loaded",
           "title": "Night-shift telemetry loaded",
           "actor": "System",
           "mode": "demo",
           "subscribers": [],
-          "hash": "8d225d8c45ca0f175b5d3513276a52b3005a0d73f10c2cd65b0321bf87c3df21"
+          "hash": "0f50732203f6a8b47c73faf7a1b7bebfd54aef4c72569abb6b8e298b4f9d8ca2"
         },
         {
           "id": "evt-00003",
-          "time": "2026-10-21T16:33:08.441+00:00",
+          "time": "2026-10-21T16:53:00.747+00:00",
           "pack": "factory",
           "type": "anomaly.flagged",
           "title": "Energy and scrap anomaly detected",
           "actor": "System",
           "mode": "demo",
           "subscribers": [],
-          "hash": "08be6646b971a5e4757225e7214b58709b9b1585f617ad971fd996e4a251dca9"
+          "hash": "f9e7a00d2fa2f67bb822a71992cb0a4b5d666d4e2d5a26630377d9195598feef"
         }
       ]
     }

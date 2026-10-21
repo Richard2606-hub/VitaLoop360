@@ -400,6 +400,15 @@ class ProposalCompletenessTests(unittest.TestCase):
         report = runtime.generate_metrics_report() if hasattr(runtime, "generate_metrics_report") else __import__("backend.runtime", fromlist=["generate_metrics_report"]).generate_metrics_report(runtime)
         self.assertIn("unit_economics", report)
         self.assertEqual(report["inference_telemetry"]["mi300x_hourly_assumption_usd"], 1.99)
+        r_res = runtime.action({"action": "readiness"})
+        self.assertIsNotNone(r_res["state"]["readiness"])
+        self.assertEqual(r_res["state"]["readiness"]["passed"], 18)
+        ref_res = runtime.action({"action": "load_reference_run"})
+        self.assertGreaterEqual(len(ref_res["state"]["events"]), 17)
+        self.assertTrue(ref_res["state"]["ledger_valid"])
+        rst_res = runtime.action({"action": "reset"})
+        self.assertEqual(len(rst_res["state"]["events"]), 3)
+        self.assertEqual(rst_res["state"]["lots"][0]["status"], "review")
 
 
 if __name__ == "__main__":

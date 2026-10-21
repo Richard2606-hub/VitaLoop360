@@ -192,10 +192,34 @@ export async function demoAction(state, action, payload = {}) {
     await append(state,'factory','analysis.completed','Synthetic shift re-analyzed','Deterministic metrics and the cited template were reviewed. No model call was made.'); message='Synthetic shift analyzed. A cited template is shown; AMD is not connected.';
   } else if(action==='pack_draft') {
     const targetPack = String(payload.pack || 'factory');
-    const draftObj = state.pack_drafts?.[targetPack] || {text: 'Cited synthetic template verified against locked facts.', citations: [], source: 'Deterministic synthetic demo', coverage: 100};
+    const draftObj = state.pack_drafts?.[targetPack] || {title: `${targetPack} Advisory Draft`, text: 'Cited synthetic template verified against locked facts.', citations: [], source: 'Deterministic synthetic demo', coverage: 100, verification: {status: 'passed', coverage: 100}};
     await append(state, targetPack, 'explanation.verified', `Cited ${targetPack} draft verified`, `100% citation and numeric lock verified (${draftObj.source}).`);
-    result = {action: 'pack_draft', status: 'passed', pack: targetPack, explanation: draftObj};
+    result = {action: 'pack_draft', status: 'passed', pack: targetPack, explanation: draftObj, verification: draftObj.verification || {status: 'passed', coverage: 100}};
     message = `Cited ${targetPack} draft verified against locked facts.`;
+  } else if(action==='reset') {
+    state.events = [];
+    if (state.lots?.[0]) state.lots[0].status = 'review';
+    state.approvals = [
+      {id:'hold',pack:'factory',lot:'2610-07',title:'Review and hold affected lot',detail:'A named supervisor must approve containment and record a reason.',status:'pending'},
+      {id:'corrective',pack:'factory',lot:'2610-07',title:'Approve profile-verification work',detail:'Records an approved work request; does not change the oven.',status:'pending'},
+    ];
+    await append(state,'core','runtime.ready','Shared core ready','Fictional Lumora Wellness reference scenario. Authored telemetry; no AMD call has been made.');
+    await append(state,'factory','telemetry.loaded','Night-shift telemetry loaded','32 authored fifteen-minute windows; metrics calculated deterministically.');
+    await append(state,'factory','anomaly.flagged','Energy and scrap anomaly detected','9 flagged windows; profile drift is an unconfirmed hypothesis. Supervisor review required.');
+    result = {action: 'reset', status: 'reset'};
+    message = 'Scenario reset to the initial reference shift.';
+  } else if(action==='load_reference_run') {
+    await demoAction(state, 'reset');
+    await demoAction(state, 'analyze');
+    await demoAction(state, 'verify');
+    await demoAction(state, 'hold', {actor: 'A. Razak (Shift Supervisor)', notes: 'Holding Lot 2610-07 pending reflow profile verification after HE-004 replacement.'});
+    await demoAction(state, 'order', {actor: 'M. Conti (Procurement)', notes: 'Disputing EUR 80 unlisted calibration service per TERMS-008-v1.0-3 and reallocating 100 units from reserve Lot 2610-05.'});
+    await demoAction(state, 'offer', {actor: 'S. Lim (Demand Planner)', notes: 'Approving RM 15 goodwill replacement offer for 24 delayed KL customers (expected net value RM 14.40/customer).'});
+    await demoAction(state, 'experience', {actor: 'N. Rahim (Brand Lead)', notes: 'Approved calm caregiver replacement onboarding story in EN/BM/IT passing BRAND-v1.0-2.', context: 'caregiver', language: 'en', branch: 'quick'});
+    await demoAction(state, 'care', {question: 'My mother Jane Tan (+6012-3456789) has mild skin irritation under the strap.'});
+    await demoAction(state, 'nurse_resolve', {actor: 'Nurse Farah', notes: 'Contacted caregiver to review IFU-v2.1 section 3.2 non-clinical strap fit checklist.'});
+    result = {action: 'load_reference_run', status: 'loaded', events: state.events.length};
+    message = `Loaded ${state.events.length}-event 5-pack reference run.`;
   } else throw Error('Unknown demo action.');
   state.ledger_valid=await verifyDemo(state); save(state); return {state,message,result};
 }
