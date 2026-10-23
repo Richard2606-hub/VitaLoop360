@@ -490,7 +490,7 @@
   "events": [
     {
       "id": "evt-00001",
-      "time": "2026-10-21T16:53:00.747+00:00",
+      "time": "2026-10-23T18:19:47.582+00:00",
       "pack": "core",
       "type": "runtime.ready",
       "lot": "2610-07",
@@ -500,11 +500,11 @@
       "mode": "demo",
       "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
       "config_hash": "703eb5fa9ab685ca72260492aa0d73251e64b823ed65ebe8f3afd76d6e95cb9b",
-      "hash": "c57efad2c11d05e74559e442f00341e81485420ea4ba522e3808e07edfb7f786"
+      "hash": "eb0e424a71d05c3919c75bc768af6abb13940f4b017bc9dd3ca322a43b81d621"
     },
     {
       "id": "evt-00002",
-      "time": "2026-10-21T16:53:00.747+00:00",
+      "time": "2026-10-23T18:19:47.582+00:00",
       "pack": "factory",
       "type": "telemetry.loaded",
       "lot": "2610-07",
@@ -512,7 +512,7 @@
       "detail": "32 authored fifteen-minute windows; metrics calculated deterministically.",
       "actor": "System",
       "mode": "demo",
-      "previous_hash": "c57efad2c11d05e74559e442f00341e81485420ea4ba522e3808e07edfb7f786",
+      "previous_hash": "eb0e424a71d05c3919c75bc768af6abb13940f4b017bc9dd3ca322a43b81d621",
       "metrics": {
         "energy_per_unit": 0.483,
         "scrap_rate": 4.09,
@@ -528,11 +528,11 @@
         "tariff": 0.48,
         "anomaly_count": 9
       },
-      "hash": "0f50732203f6a8b47c73faf7a1b7bebfd54aef4c72569abb6b8e298b4f9d8ca2"
+      "hash": "913ab11e4de529d02cac285b19825771c92d1fc707b3cd37cf05166105787e73"
     },
     {
       "id": "evt-00003",
-      "time": "2026-10-21T16:53:00.747+00:00",
+      "time": "2026-10-23T18:19:47.582+00:00",
       "pack": "factory",
       "type": "anomaly.flagged",
       "lot": "2610-07",
@@ -540,7 +540,7 @@
       "detail": "9 flagged windows; profile drift is an unconfirmed hypothesis. Supervisor review required.",
       "actor": "System",
       "mode": "demo",
-      "previous_hash": "0f50732203f6a8b47c73faf7a1b7bebfd54aef4c72569abb6b8e298b4f9d8ca2",
+      "previous_hash": "913ab11e4de529d02cac285b19825771c92d1fc707b3cd37cf05166105787e73",
       "metrics": {
         "energy_per_unit": 0.483,
         "scrap_rate": 4.09,
@@ -556,7 +556,7 @@
         "tariff": 0.48,
         "anomaly_count": 9
       },
-      "hash": "f9e7a00d2fa2f67bb822a71992cb0a4b5d666d4e2d5a26630377d9195598feef"
+      "hash": "2580740f88e41550b929e21772afc2c77c0689702b4b73463a3267449159270e"
     }
   ],
   "approvals": [
@@ -2334,36 +2334,36 @@
       "2610-07": [
         {
           "id": "evt-00001",
-          "time": "2026-10-21T16:53:00.747+00:00",
+          "time": "2026-10-23T18:19:47.582+00:00",
           "pack": "core",
           "type": "runtime.ready",
           "title": "Shared core ready",
           "actor": "System",
           "mode": "demo",
           "subscribers": [],
-          "hash": "c57efad2c11d05e74559e442f00341e81485420ea4ba522e3808e07edfb7f786"
+          "hash": "eb0e424a71d05c3919c75bc768af6abb13940f4b017bc9dd3ca322a43b81d621"
         },
         {
           "id": "evt-00002",
-          "time": "2026-10-21T16:53:00.747+00:00",
+          "time": "2026-10-23T18:19:47.582+00:00",
           "pack": "factory",
           "type": "telemetry.loaded",
           "title": "Night-shift telemetry loaded",
           "actor": "System",
           "mode": "demo",
           "subscribers": [],
-          "hash": "0f50732203f6a8b47c73faf7a1b7bebfd54aef4c72569abb6b8e298b4f9d8ca2"
+          "hash": "913ab11e4de529d02cac285b19825771c92d1fc707b3cd37cf05166105787e73"
         },
         {
           "id": "evt-00003",
-          "time": "2026-10-21T16:53:00.747+00:00",
+          "time": "2026-10-23T18:19:47.582+00:00",
           "pack": "factory",
           "type": "anomaly.flagged",
           "title": "Energy and scrap anomaly detected",
           "actor": "System",
           "mode": "demo",
           "subscribers": [],
-          "hash": "f9e7a00d2fa2f67bb822a71992cb0a4b5d666d4e2d5a26630377d9195598feef"
+          "hash": "2580740f88e41550b929e21772afc2c77c0689702b4b73463a3267449159270e"
         }
       ]
     }

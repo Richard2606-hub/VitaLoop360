@@ -62,6 +62,7 @@ class Runtime:
             self._restore_from_ledger()
 
     def _init_defaults(self):
+        self.gateway.reset_stats()
         self.explanation = {
             "title": "Shift Excursion & Thermal Profile Hypothesis",
             "text": self._demo_explanation(),
@@ -110,6 +111,13 @@ class Runtime:
                 u = event["usage"]
                 self.gateway.calls += 1
                 self.gateway.successful = True
+                if u.get("model"):
+                    self.gateway.model = u["model"]
+                if u.get("endpoint"):
+                    self.gateway.endpoint = u["endpoint"]
+                    self.gateway.configured = True
+                    if self.gateway.provider == "Configured OpenAI-compatible endpoint":
+                        self.gateway.provider = "AMD Token Factory (Radeon Cloud)"
                 lat = u.get("latency_ms", self.gateway.latency_ms)
                 self.gateway.latency_ms = lat
                 if isinstance(lat, (int, float)) and lat > 0:
@@ -170,10 +178,10 @@ class Runtime:
 
     def _record_call(self, usage):
         self.ledger.append(
-            pack="factory",
+            pack=getattr(self, "_active_model_pack", "factory"),
             type="model.called",
             lot=LOT,
-            title="Model inference completed",
+            title=f"Model inference completed ({usage.get('model', 'Gemma-4-31B-IT')})",
             detail="Actual configured endpoint response; hardware is operator-declared, not attested.",
             mode="live",
             usage=usage,
@@ -757,6 +765,7 @@ class Runtime:
             ]
             for attempt in range(2):
                 try:
+                    self._active_model_pack = target_pack
                     text = self.gateway.complete(messages, bypass_cache=attempt > 0)
                     verdict = verify(text, spec["facts"], passages)
                     if target_pack == "experience" and verdict["status"] == "passed":
@@ -826,6 +835,7 @@ class Runtime:
             ]
             for attempt in range(2):
                 try:
+                    self._active_model_pack = "factory"
                     text = self.gateway.complete(messages, bypass_cache=attempt > 0)
                     verdict = verify(text, self.metrics, passages)
                 except GatewayError as exc:

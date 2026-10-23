@@ -343,42 +343,105 @@ class GatewayTests(unittest.TestCase):
 
 
 class HTTPTests(unittest.TestCase):
+    def _in_memory_http(self, handler_cls, method, path, body=None, headers=None):
+        headers = dict(headers or {})
+        headers.setdefault("Host", "127.0.0.1:8765")
+        if body is not None:
+            headers["Content-Length"] = str(len(body))
+        raw_req = f"{method} {path} HTTP/1.1\r\n" + "".join(f"{k}: {v}\r\n" for k, v in headers.items()) + "\r\n"
+        req_bytes = raw_req.encode("utf-8") + (body or b"")
+        out_buf = io.BytesIO()
+
+        class _MemSock:
+            def __init__(self, data, out):
+                self._in = io.BytesIO(data)
+                self._out = out
+
+            def makefile(self, mode, *args, **kwargs):
+                return self._in if "r" in mode else self._out
+
+            def sendall(self, data):
+                self._out.write(data)
+
+        class _DummyServer:
+            server_name = "127.0.0.1"
+            server_port = 8765
+
+        handler_cls(_MemSock(req_bytes, out_buf), ("127.0.0.1", 55000), _DummyServer())
+        raw_resp = out_buf.getvalue()
+        head, _, payload = raw_resp.partition(b"\r\n\r\n")
+        status_code = int(head.splitlines()[0].split()[1])
+        return status_code, payload
+
     def test_json_errors_static_isolation_and_state(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as folder:
             root = Path(folder)
             (root / "index.html").write_text("VitaLoop", encoding="utf-8")
             runtime = Runtime(env={})
-            server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(runtime, root))
-            thread = threading.Thread(target=server.serve_forever, daemon=True)
-            thread.start()
-            base = f"http://127.0.0.1:{server.server_port}"
+            handler_cls = make_handler(runtime, root)
+            server = None
+            use_in_memory = False
             try:
-                with urllib.request.urlopen(base + "/api/state") as response:
-                    self.assertEqual(json.load(response)["mode"], "demo")
-                with urllib.request.urlopen(base + "/api/readiness") as response:
-                    readiness = json.load(response)
-                    self.assertEqual(readiness["failed"], 0)
-                with urllib.request.urlopen(base + "/api/metrics") as response:
-                    metrics = json.load(response)
-                    self.assertIn("hero_pack_domain_metrics", metrics)
-                    self.assertIn("readiness_pass_rate", metrics)
-                for path, body, content_type, expected in [("/api/action", b'{"action":"hold"}', "application/json", 400), ("/api/action", b"{", "application/json", 400), ("/api/action", b"{}", "text/plain", 415), ("/api/missing", b"{}", "application/json", 404)]:
-                    request = urllib.request.Request(base + path, data=body, headers={"Content-Type": content_type})
-                    with self.subTest(path=path, body=body), self.assertRaises(urllib.error.HTTPError) as caught:
+                server = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                base = f"http://127.0.0.1:{server.server_port}"
+                try:
+                    with urllib.request.urlopen(base + "/api/state") as response:
+                        self.assertEqual(json.load(response)["mode"], "demo")
+                    with urllib.request.urlopen(base + "/api/readiness") as response:
+                        readiness = json.load(response)
+                        self.assertEqual(readiness["failed"], 0)
+                    with urllib.request.urlopen(base + "/api/metrics") as response:
+                        metrics = json.load(response)
+                        self.assertIn("hero_pack_domain_metrics", metrics)
+                        self.assertIn("readiness_pass_rate", metrics)
+                    for path, body, content_type, expected in [("/api/action", b'{"action":"hold"}', "application/json", 400), ("/api/action", b"{", "application/json", 400), ("/api/action", b"{}", "text/plain", 415), ("/api/missing", b"{}", "application/json", 404)]:
+                        request = urllib.request.Request(base + path, data=body, headers={"Content-Type": content_type})
+                        with self.subTest(path=path, body=body), self.assertRaises(urllib.error.HTTPError) as caught:
+                            urllib.request.urlopen(request)
+                        self.assertEqual(caught.exception.code, expected)
+                        self.assertIn("error", json.load(caught.exception))
+                    with self.assertRaises(urllib.error.HTTPError) as caught:
+                        urllib.request.urlopen(base + "/%2e%2e/run.py")
+                    self.assertEqual(caught.exception.code, 403)
+                    request = urllib.request.Request(base + "/api/action", data=b'{"action":"verify"}', headers={"Content-Type": "application/json", "Origin": "https://foreign.example"})
+                    with self.assertRaises(urllib.error.HTTPError) as caught:
                         urllib.request.urlopen(request)
-                    self.assertEqual(caught.exception.code, expected)
-                    self.assertIn("error", json.load(caught.exception))
-                with self.assertRaises(urllib.error.HTTPError) as caught:
-                    urllib.request.urlopen(base + "/%2e%2e/run.py")
-                self.assertEqual(caught.exception.code, 403)
-                request = urllib.request.Request(base + "/api/action", data=b'{"action":"verify"}', headers={"Content-Type": "application/json", "Origin": "https://foreign.example"})
-                with self.assertRaises(urllib.error.HTTPError) as caught:
-                    urllib.request.urlopen(request)
-                self.assertEqual(caught.exception.code, 403)
-            finally:
-                server.shutdown()
-                server.server_close()
-                thread.join(timeout=2)
+                    self.assertEqual(caught.exception.code, 403)
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=2)
+            except PermissionError:
+                use_in_memory = True
+            except urllib.error.URLError as exc:
+                if isinstance(getattr(exc, "reason", None), PermissionError):
+                    use_in_memory = True
+                else:
+                    raise
+
+            if use_in_memory:
+                code, body = self._in_memory_http(handler_cls, "GET", "/api/state")
+                self.assertEqual(code, 200)
+                self.assertEqual(json.loads(body)["mode"], "demo")
+                code, body = self._in_memory_http(handler_cls, "GET", "/api/readiness")
+                self.assertEqual(code, 200)
+                self.assertEqual(json.loads(body)["failed"], 0)
+                code, body = self._in_memory_http(handler_cls, "GET", "/api/metrics")
+                self.assertEqual(code, 200)
+                metrics = json.loads(body)
+                self.assertIn("hero_pack_domain_metrics", metrics)
+                self.assertIn("readiness_pass_rate", metrics)
+                for path, req_body, content_type, expected in [("/api/action", b'{"action":"hold"}', "application/json", 400), ("/api/action", b"{", "application/json", 400), ("/api/action", b"{}", "text/plain", 415), ("/api/missing", b"{}", "application/json", 404)]:
+                    with self.subTest(path=path, body=req_body):
+                        code, resp_body = self._in_memory_http(handler_cls, "POST", path, body=req_body, headers={"Content-Type": content_type})
+                        self.assertEqual(code, expected)
+                        self.assertIn("error", json.loads(resp_body))
+                code, _ = self._in_memory_http(handler_cls, "GET", "/%2e%2e/run.py")
+                self.assertEqual(code, 403)
+                code, _ = self._in_memory_http(handler_cls, "POST", "/api/action", body=b'{"action":"verify"}', headers={"Content-Type": "application/json", "Origin": "https://foreign.example"})
+                self.assertEqual(code, 403)
 
 
 class ProposalCompletenessTests(unittest.TestCase):
@@ -409,6 +472,30 @@ class ProposalCompletenessTests(unittest.TestCase):
         rst_res = runtime.action({"action": "reset"})
         self.assertEqual(len(rst_res["state"]["events"]), 3)
         self.assertEqual(rst_res["state"]["lots"][0]["status"], "review")
+
+    def test_module_facades_and_hybrid_retrieval_and_replay_telemetry(self):
+        from backend.analytics import calculate as calc_f, isolation_forest_scores, three_way_match_calc as twm_f
+        from backend.demand_analytics import demand_and_retention_analytics as dra_f, holt_winters_forecast as hw_f, weibull_survival_churn as wb_f
+        from backend.guard import care_agreement as ca_f, care_guard as cg_f, experience_quality_gate as eqg_f, redact_pii as rp_f
+        from backend.retrieval import char_ngrams_cosine, retrieve as ret_f
+        from backend.verifier import verify as ver_f
+
+        self.assertTrue(callable(calc_f) and callable(isolation_forest_scores) and callable(twm_f))
+        self.assertTrue(callable(dra_f) and callable(hw_f) and callable(wb_f))
+        self.assertTrue(callable(ca_f) and callable(cg_f) and callable(eqg_f) and callable(rp_f))
+        self.assertTrue(callable(ver_f))
+        sim = char_ngrams_cosine("reflow oven calibration", "reflow profile calibration")
+        self.assertGreater(sim, 0.4)
+        hits = ret_f(DOCUMENTS, "reflow calibration", "factory")
+        self.assertTrue(all("bm25_score" in h and "ngram_cosine" in h for h in hits))
+
+        ref_path = Path(__file__).resolve().parents[1] / "data" / "reference-ledger.jsonl"
+        replay_rt = Runtime(ledger_path=ref_path, env={}, replay_only=True)
+        replay_state = replay_rt.state()
+        self.assertEqual(replay_state["mode"], "replay")
+        self.assertEqual(replay_state["gateway"]["model"], "Gemma-4-31B-IT")
+        self.assertEqual(replay_state["gateway"]["calls"], 5)
+        self.assertEqual(replay_state["ledger_views"]["guard_view"]["resolved_by_nurse"], 1)
 
 
 if __name__ == "__main__":

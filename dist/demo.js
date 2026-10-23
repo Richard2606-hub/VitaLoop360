@@ -206,11 +206,22 @@ export async function demoAction(state, action, payload = {}) {
     await append(state,'core','runtime.ready','Shared core ready','Fictional Lumora Wellness reference scenario. Authored telemetry; no AMD call has been made.');
     await append(state,'factory','telemetry.loaded','Night-shift telemetry loaded','32 authored fifteen-minute windows; metrics calculated deterministically.');
     await append(state,'factory','anomaly.flagged','Energy and scrap anomaly detected','9 flagged windows; profile drift is an unconfirmed hypothesis. Supervisor review required.');
+    state.gateway = {...state.gateway, configured: false, provider: 'Deterministic synthetic demo', model: 'No model connected', endpoint: 'Not configured', calls: 0, calls_last_minute: 0, tokens: 0, cost: 0, latency_ms: null, median_latency_ms: null, p95_latency_ms: null, mi300x_gpu_time_cost_usd: 0};
+    if (state.pack_drafts) {
+      for (const p of Object.values(state.pack_drafts)) p.source = 'Deterministic synthetic demo';
+    }
+    if (state.explanation) state.explanation.source = 'Deterministic synthetic demo';
     result = {action: 'reset', status: 'reset'};
     message = 'Scenario reset to the initial reference shift.';
   } else if(action==='load_reference_run') {
     await demoAction(state, 'reset');
     await demoAction(state, 'analyze');
+    for (const pk of ['order', 'demand', 'experience', 'care']) {
+      if (state.pack_drafts?.[pk]) state.pack_drafts[pk].source = 'Live configured model · Gemma-4-31B-IT';
+      await demoAction(state, 'pack_draft', {pack: pk});
+    }
+    if (state.explanation) state.explanation.source = 'Live configured model · Gemma-4-31B-IT';
+    if (state.pack_drafts?.factory) state.pack_drafts.factory.source = 'Live configured model · Gemma-4-31B-IT';
     await demoAction(state, 'verify');
     await demoAction(state, 'hold', {actor: 'A. Razak (Shift Supervisor)', notes: 'Holding Lot 2610-07 pending reflow profile verification after HE-004 replacement.'});
     await demoAction(state, 'order', {actor: 'M. Conti (Procurement)', notes: 'Disputing EUR 80 unlisted calibration service per TERMS-008-v1.0-3 and reallocating 100 units from reserve Lot 2610-05.'});
@@ -218,8 +229,11 @@ export async function demoAction(state, action, payload = {}) {
     await demoAction(state, 'experience', {actor: 'N. Rahim (Brand Lead)', notes: 'Approved calm caregiver replacement onboarding story in EN/BM/IT passing BRAND-v1.0-2.', context: 'caregiver', language: 'en', branch: 'quick'});
     await demoAction(state, 'care', {question: 'My mother Jane Tan (+6012-3456789) has mild skin irritation under the strap.'});
     await demoAction(state, 'nurse_resolve', {actor: 'Nurse Farah', notes: 'Contacted caregiver to review IFU-v2.1 section 3.2 non-clinical strap fit checklist.'});
+    await demoAction(state, 'corrective', {actor: 'K. Tan (Process Engineer)', notes: 'Verified oven Zone 3 thermocouple and HE-004 calibration profile per SOP-017 v3.2 section 4.3.'});
+    await demoAction(state, 'release', {actor: 'A. Razak (Shift Supervisor)', notes: 'Releasing Lot 2610-07 after verified reflow profile and QA sign-off.'});
+    state.gateway = {...state.gateway, configured: true, provider: 'AMD Token Factory (Radeon Cloud)', model: 'Gemma-4-31B-IT', endpoint: 'https://developer.amd.com.cn/radeon/api/v1', calls: 5, calls_last_minute: 5, rate_limit_rpm: 20, concurrency_ceiling: 6, tokens: 4215, cost: 0, latency_ms: 7610, median_latency_ms: 7840, p95_latency_ms: 11326, mi300x_gpu_time_cost_usd: 0.023131};
     result = {action: 'load_reference_run', status: 'loaded', events: state.events.length};
-    message = `Loaded ${state.events.length}-event 5-pack reference run.`;
+    message = `Loaded ${state.events.length}-event 5-pack reference run (with Gemma-4-31B-IT completions across all 5 packs).`;
   } else throw Error('Unknown demo action.');
   state.ledger_valid=await verifyDemo(state); save(state); return {state,message,result};
 }

@@ -63,6 +63,18 @@ class Gateway:
             cleaned = cleaned[cleaned.find("{") : cleaned.rfind("}") + 1]
         return json.loads(cleaned)
 
+    def reset_stats(self):
+        with self.lock:
+            self.calls = self.tokens = self.input_tokens = self.output_tokens = 0
+            self.cost = 0.0
+            self.latency_ms = 0
+            self.latencies = []
+            self.successful = False
+            self.usage_complete = True
+            self.last_error = None
+            self.cache.clear()
+            self.starts.clear()
+
     def status(self):
         with self.lock:
             now = time.monotonic()
@@ -133,7 +145,8 @@ class Gateway:
                     if len(raw) > 2_000_000:
                         raise GatewayError("Model response exceeded the response-size limit.")
                     payload = json.loads(raw)
-                    elapsed = round((time.perf_counter() - started) * 1000)
+                    measured_ms = round((time.perf_counter() - started) * 1000)
+                    elapsed = int(payload["latency_ms"]) if isinstance(payload.get("latency_ms"), (int, float)) and measured_ms < 5 else measured_ms
                     usage = payload.get("usage") or {}
                     prompt_tokens, completion_tokens = usage.get("prompt_tokens"), usage.get("completion_tokens")
                     metered = all(isinstance(value, int) and not isinstance(value, bool) and value >= 0 for value in (prompt_tokens, completion_tokens))

@@ -181,7 +181,7 @@ class Ledger:
                     "refused": sum(1 for r in guard_events if r["type"] == "care.refused"),
                     "escalated": sum(1 for r in guard_events if r["type"] == "care.escalated"),
                     "answered": sum(1 for r in guard_events if r["type"] == "care.answered"),
-                    "resolved_by_nurse": sum(1 for r in guard_events if r["type"] == "nurse.resolved"),
+                    "resolved_by_nurse": sum(1 for r in guard_events if r["type"] == "nurse.resolved" or r.get("action") == "nurse_resolve" or r.get("task_id")),
                     "redactions_by_entity": redaction_totals,
                 },
                 "approvals_view": approvals,

@@ -43,6 +43,9 @@ def isolation_scores(values, seed=360, trees=64):
     return [round(2 ** (-(sum(path(row, tree) for tree in forest) / trees) / c(n)), 4) for row in values]
 
 
+isolation_forest_scores = isolation_scores
+
+
 def calculate(rows, tariff=0.48):
     if not rows:
         raise ValueError("Telemetry must contain at least one window.")

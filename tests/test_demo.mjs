@@ -5,8 +5,23 @@ globalThis.crypto ??= webcrypto;
 const cache = new Map();
 globalThis.localStorage = {getItem:key=>cache.get(key)||null,setItem:(key,value)=>cache.set(key,value)};
 const {loadDemo, demoAction, verifyDemo, browserRedactPii, browserVerifyDraft} = await import('../dist/demo.js');
+const {renderPack} = await import('../dist/packs.js');
 const seed=JSON.parse(await readFile(new URL('../dist/demo-data.json',import.meta.url),'utf8'));
 const state=await loadDemo(seed,true);
+for (const packId of ['order', 'demand', 'experience', 'care']) {
+  const html = renderPack(packId, state);
+  assert.ok(html.includes(`data-pack-draft="${packId}"`), `${packId} pack should render Gemma draft button`);
+  assert.ok(html.includes('RESIDENT MODEL'), `${packId} pack should render Resident Model card`);
+  const draftRes = await demoAction(state, 'pack_draft', {pack: packId});
+  assert.equal(draftRes.result.status, 'passed');
+}
+const refLoaded = await demoAction(state, 'load_reference_run');
+assert.equal(refLoaded.result.status, 'loaded');
+assert.equal(state.gateway.model, 'Gemma-4-31B-IT');
+assert.equal(state.gateway.calls, 5);
+await demoAction(state, 'reset');
+assert.equal(state.events.length, 3);
+assert.equal(state.lots[0].status, 'review');
 const reviewer={actor:'Test Reviewer',notes:'Synthetic evidence reviewed.'};
 assert.equal(await verifyDemo(state),true);
 await assert.rejects(demoAction(state,'hold',{}),/name/);

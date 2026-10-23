@@ -4,8 +4,22 @@ import re
 from collections import Counter
 
 
+def char_ngrams_cosine(query_text, doc_text, n=3):
+    """Character n-gram TF cosine similarity for morphological/subword resilience."""
+    q_clean = re.sub(r"\s+", " ", query_text.lower()).strip()
+    d_clean = re.sub(r"\s+", " ", doc_text.lower()).strip()
+    if len(q_clean) < n or len(d_clean) < n:
+        return 0.0
+    q_grams = Counter(q_clean[i : i + n] for i in range(len(q_clean) - n + 1))
+    d_grams = Counter(d_clean[i : i + n] for i in range(len(d_clean) - n + 1))
+    dot = sum(v * d_grams.get(k, 0) for k, v in q_grams.items())
+    norm_q = math.sqrt(sum(v * v for v in q_grams.values()))
+    norm_d = math.sqrt(sum(v * v for v in d_grams.values()))
+    return dot / (norm_q * norm_d) if norm_q and norm_d else 0.0
+
+
 def retrieve(documents, query, pack, version=None, limit=3):
-    """BM25 over authorized pack passages, filtered before scoring."""
+    """Hybrid BM25 (k1=1.5, b=0.75) + character 3-gram cosine over authorized pack passages."""
     docs = [d for d in documents if d["pack"] == pack and (version is None or d["version"] == version)]
     terms = re.findall(r"\w+", query.lower())
     tokens = [re.findall(r"\w+", (d["title"] + " " + d["text"]).lower()) for d in docs]
@@ -13,13 +27,15 @@ def retrieve(documents, query, pack, version=None, limit=3):
     ranked = []
     for doc, words in zip(docs, tokens):
         counts = Counter(words)
-        score = 0.0
+        bm25 = 0.0
         for term in terms:
             frequency = sum(term in row for row in tokens)
             idf = math.log(1 + (len(docs) - frequency + 0.5) / (frequency + 0.5))
             tf = counts[term]
-            score += idf * tf * 2.5 / (tf + 1.5 * (0.25 + 0.75 * len(words) / max(1, average)))
-        ranked.append({**doc, "score": round(score, 4)})
+            bm25 += idf * tf * 2.5 / (tf + 1.5 * (0.25 + 0.75 * len(words) / max(1, average)))
+        ngram_cos = char_ngrams_cosine(query, doc["title"] + " " + doc["text"], n=3)
+        score = bm25 + 0.35 * ngram_cos
+        ranked.append({**doc, "score": round(score, 4), "bm25_score": round(bm25, 4), "ngram_cosine": round(ngram_cos, 4)})
     return sorted(ranked, key=lambda row: row["score"], reverse=True)[:limit]
 
 

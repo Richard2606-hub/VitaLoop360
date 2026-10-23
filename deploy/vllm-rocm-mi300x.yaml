@@ -38,7 +38,7 @@ services:
   vitaloop-core:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile
+      dockerfile: Dockerfile
     container_name: vitaloop-core
     depends_on:
       - vllm-rocm-gemma
